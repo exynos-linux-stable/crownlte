@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -92,6 +92,11 @@
 #define NONBOOT_LITTLE_CORE		1
 #define DEFAULT_BIG_CORE		4
 #define MIGRATE_TARGET_CORE     DEFAULT_BIG_CORE
+
+#define START_BIG_CORE			DEFAULT_BIG_CORE
+#define END_BIG_CORE			7
+#define START_LITTLE_CORE		DEFAULT_LITTLE_CORE
+#define END_LITTLE_CORE			3
 
 #define MC_INTR_LOCAL_TIMER            (IRQ_SPI(470) + DEFAULT_BIG_CORE)
 

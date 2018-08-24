@@ -122,10 +122,10 @@ void copy_set_time_ctrl(struct maptbl *tbl, u8 *dst)
 		en_reg |= (SC_D_CLK_EN | SC_DISP_ON);
 
 		if (props->digital.en_hh)
-			dig_en |= SC_D_EN_HH;
+			dig_en |= (props->digital.en_hh & 0x03) << 2;
 
 		if (props->digital.en_mm)
-			dig_en |= SC_D_EN_SS;
+			dig_en |= (props->digital.en_mm & 0x03);
 
 		dst[DIGITAL_EN_REG] = dig_en;
 	}
@@ -320,10 +320,10 @@ void copy_digital_clock_ctrl(struct maptbl *tbl, u8 *dst)
 		en_reg |= (SC_D_CLK_EN | SC_DISP_ON);
 
 		if (props->digital.en_hh)
-			dig_en |= SC_D_EN_HH;
+			dig_en |= (props->digital.en_hh & 0x03) << 2;
 
 		if (props->digital.en_mm)
-			dig_en |= SC_D_EN_SS;
+			dig_en |= (props->digital.en_mm & 0x03);
 
 		dst[DIGITAL_EN_REG] = dig_en;
 	}

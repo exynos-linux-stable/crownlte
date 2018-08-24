@@ -211,12 +211,21 @@ static void *s6e3ha8_aod_self_mask_img_cmdtbl[] = {
 
 // --------------------- Image for self mask control ---------------------
 static char S6E3HA8_AOD_SELF_MASK_ENA[] = {
+#ifdef CONFIG_SELFMASK_FACTORY
+	0x7A,
+	0x01, 0x0B, 0x90, 0x0C,
+	0x25, 0x0C, 0x26, 0x0C,
+	0xBB, 0x09, 0x0F, 0x00,
+	0x00, 0x00, 0x00
+#else
 	0x7A,
 	0x01, 0x00, 0x00, 0x00,
 	0x95, 0x0a, 0xfa, 0x0b,
 	0x8f, 0x09, 0x0f, 0x00,
 	0x00, 0x00, 0x00
+#endif
 };
+
 #ifdef AOD_TEST
 static DEFINE_PKTUI(s6e3ha8_aod_self_mask_ctrl_pkt, &s6e3ha8_aod_maptbl[SELF_MASK_CTRL_MAPTBL], 0);
 static DEFINE_VARIABLE_PACKET(s6e3ha8_aod_self_mask_ctrl_pkt, DSI_PKT_TYPE_COMP, S6E3HA8_AOD_SELF_MASK_CTRL, 0);
@@ -598,5 +607,6 @@ static struct aod_tune s6e3ha8_aod_tune = {
 	.seqtbl = s6e3ha8_aod_seqtbl,
 	.nr_maptbl = ARRAY_SIZE(s6e3ha8_aod_maptbl),
 	.maptbl = s6e3ha8_aod_maptbl,
+	.self_mask_en = true,
 };
 #endif //__S6E3HA8_AOD_PANEL_H__

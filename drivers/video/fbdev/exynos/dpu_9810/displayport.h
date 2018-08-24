@@ -89,6 +89,7 @@ struct displayport_resources {
 	int irq;
 	void __iomem *link_regs;
 	void __iomem *phy_regs;
+	void __iomem *usbdp_regs;
 	struct clk *aclk;
 };
 
@@ -372,6 +373,7 @@ struct fb_vendor {
 #define VERSION (0xFF << 16)
 #define HDCP_CAPABLE (1 << 1)
 
+#define SMC_CHECK_STREAM_TYPE_ID	((unsigned int)0x82004022)
 #define DPCD_HDCP22_RX_INFO 0x69330
 
 #define DPCD_HDCP22_RX_CAPS_LENGTH 3
@@ -386,6 +388,12 @@ struct fb_vendor {
 #define HDCP_VERSION_1_3 0x13
 #define HDCP_VERSION_2_2 0x02
 
+enum drm_state {
+	DRM_OFF = 0x0,
+	DRM_ON = 0x1,
+	DRM_SAME_STREAM_TYPE = 0x2	/* If the previous contents and stream_type id are the same flag */
+};
+
 #define SYNC_POSITIVE 0
 #define SYNC_NEGATIVE 1
 
@@ -394,7 +402,6 @@ struct fb_vendor {
 #define AUDIO_ENABLE 1
 #define AUDIO_WAIT_BUF_FULL 2
 #define AUDIO_DMA_REQ_HIGH 3
-
 
 enum phy_tune_info {
 	PHY_AMP_PARAM = 0,
@@ -409,6 +416,7 @@ typedef enum {
 	V1280X720P50,
 	V1280X720P60,
 	V1280X800P60RB,
+	V1366X768P60,
 	V1280X1024P60,
 	V1920X1080P24,
 	V1920X1080P25,
@@ -416,10 +424,12 @@ typedef enum {
 	V1600X900P59,
 	V1600X900P60RB,
 	V1920X1080P50,
+	V1920X1080P59,
 	V1920X1080P60,
 	V2048X1536P60,
 	V1920X1440P60,
 	V2560X1440P59,
+	V1440x2560P60,
 	V1440x2560P75,
 	V2560X1440P60,
 	V3840X2160P24,
@@ -434,6 +444,7 @@ typedef enum {
 	V4096X2160P50,
 	V4096X2160P60,
 	V640X10P60SACRC,
+	VDUMMYTIMING,
 } videoformat;
 
 typedef enum{
@@ -523,6 +534,12 @@ enum dex_state {
 	DEX_ON,
 	DEX_RECONNECTING,
 };
+enum dex_support_type {
+	DEX_NOT_SUPPORT = 0,
+	DEX_FHD_SUPPORT,
+	DEX_WQHD_SUPPORT,
+	DEX_UHD_SUPPORT
+};
 struct displayport_device {
 	enum displayport_state state;
 	struct device *dev;
@@ -557,6 +574,7 @@ struct displayport_device {
 	struct mutex hpd_lock;
 	struct mutex aux_lock;
 	struct mutex training_lock;
+	struct mutex hdcp2_lock;
 	wait_queue_head_t dp_wait;
 	int audio_state;
 	int audio_buf_empty_check;
@@ -595,6 +613,10 @@ struct displayport_device {
 	int dex_setting;
 	enum dex_state dex_state;
 	u8 dex_ver[2];
+	enum dex_support_type dex_adapter_type;
+
+	enum drm_state drm_start_state;
+	enum drm_state drm_smc_state;
 
 	u8 edid_manufacturer[4];
 	u32 edid_product;
@@ -671,7 +693,7 @@ struct displayport_supported_preset {
 	u32 h_sync_pol;
 	u8 vic;
 	char *name;
-	bool dex_support;
+	enum dex_support_type dex_support;
 	bool pro_audio_support;
 	bool edid_support_match;
 };
@@ -712,12 +734,26 @@ struct displayport_supported_preset {
 		V4L2_DV_BT_STD_DMT | V4L2_DV_BT_STD_CVT, 0) \
 }
 
+#define V4L2_DV_BT_CVT_1440X2560P60_ADDED { \
+	.type = V4L2_DV_BT_656_1120, \
+	V4L2_INIT_BT_TIMINGS(1440, 2560, 0, V4L2_DV_HSYNC_POS_POL, \
+		246510000, 32, 10, 108, 6, 2, 16, 0, 0, 0, \
+		V4L2_DV_BT_STD_DMT | V4L2_DV_BT_STD_CVT, 0) \
+}
+
 #define V4L2_DV_BT_CVT_1600X900P59_ADDED { \
 	.type = V4L2_DV_BT_656_1120, \
 	V4L2_INIT_BT_TIMINGS(1600, 900, 0, \
 		V4L2_DV_HSYNC_POS_POL | V4L2_DV_VSYNC_POS_POL, \
 		97750000, 48, 32, 80, 3, 5, 18, 0, 0, 0, \
 		V4L2_DV_BT_STD_DMT, V4L2_DV_FL_REDUCED_BLANKING) \
+}
+
+#define V4L2_DV_BT_CVT_1920X1080P59_ADDED { \
+	.type = V4L2_DV_BT_656_1120, \
+	V4L2_INIT_BT_TIMINGS(1920, 1080, 0, V4L2_DV_HSYNC_POS_POL, \
+		138500000, 48, 44, 68, 3, 5, 23, 0, 0, 0, \
+		V4L2_DV_BT_STD_DMT | V4L2_DV_BT_STD_CVT, 0) \
 }
 
 #define V4L2_DV_BT_CVT_640x10P60_ADDED { \
@@ -953,11 +989,15 @@ static inline void displayport_write_mask(u32 reg_id, u32 val, u32 mask)
 static inline int displayport_phy_enabled(void)
 {
 	/* USBDP_PHY_CONTROL register */
-	void __iomem *usbdp_phy_base = ioremap(USBDP_PHY_CONTROL, SZ_4);
-	int en = readl(usbdp_phy_base) & 0x1;
+	struct displayport_device *displayport = get_displayport_drvdata();
+	int en = 0;
 
-	if (!en)
-		displayport_info("combo phy disabled\n");
+	if (displayport->res.usbdp_regs) {
+		en = readl(displayport->res.usbdp_regs) & 0x1;
+
+		if (!en)
+			displayport_info("combo phy disabled\n");
+	}
 
 	return en;
 }
@@ -1119,7 +1159,8 @@ extern int hdcp_dplink_set_hprime_available(void);
 extern int hdcp_dplink_set_rp_ready(void);
 extern int hdcp_dplink_set_reauth(void);
 extern int hdcp_dplink_set_integrity_fail(void);
-extern int hdcp_dplink_hpd_changed(void);
+extern int hdcp_dplink_cancel_auth(void);
+extern void hdcp_dplink_clear_all(void);
 
 #define DISPLAYPORT_IOC_DUMP			_IOW('V', 0, u32)
 #define DISPLAYPORT_IOC_GET_ENUM_DV_TIMINGS	_IOW('V', 1, u8)

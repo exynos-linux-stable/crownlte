@@ -400,10 +400,8 @@ struct tcp_sock {
 	u32 netpm_rttvar;
 	int netpm_cwnd_est;
 	int netpm_tcp_rmem_max;
-	int netpm_tcp_rmem_max_base;
-	int netpm_rwnd_max_adjust; // the number of rwnd cut after last rwnd grown
 	int netpm_max_tput;
-	int netpm_rmem_max_curbdp[2];
+	int netpm_rmem_max_curbdp;
 #endif
 
 /* Receiver side RTT estimation */

@@ -972,10 +972,21 @@ struct s5p_mfc_enc_params {
 	u32 i_frm_ctrl_mode;
 	u32 i_frm_ctrl;
 
+	u32 check_color_range;
 	u32 color_range;
 	u32 colour_primaries;
 	u32 transfer_characteristics;
 	u32 matrix_coefficients;
+
+	u32 static_info_enable;
+	u32 max_pic_average_light;
+	u32 max_content_light;
+	u32 max_display_luminance;
+	u32 min_display_luminance;
+	u32 white_point;
+	u32 display_primaries_0;
+	u32 display_primaries_1;
+	u32 display_primaries_2;
 
 	union {
 		struct s5p_mfc_h264_enc_params h264;
@@ -1161,6 +1172,7 @@ struct s5p_mfc_dec {
 	int is_dpb_full;
 
 	unsigned int err_reuse_flag;
+	unsigned int dec_only_release_flag;	
 
 	/* for debugging about black bar detection */
 	void *frame_vaddr[3][30];

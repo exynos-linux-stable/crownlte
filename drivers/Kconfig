@@ -232,4 +232,6 @@ source "drivers/fingerprint/Kconfig"
 
 source "drivers/gator_5.27/Kconfig"
 
+source "drivers/five/Kconfig"
+
 endmenu

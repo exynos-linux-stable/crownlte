@@ -95,10 +95,16 @@ struct sensor_info {
 #define SENSOR_INFO_GYRO_UNCALIBRATED		{"uncal_gyro_sensor", GYRO_UNCALIB_SENSOR, true, REPORT_MODE_CONTINUOUS, 24, 24}
 #define SENSOR_INFO_INTERRUPT_GYRO			{"interrupt_gyro_sensor", INTERRUPT_GYRO_SENSOR, true, REPORT_MODE_ON_CHANGE, 12, 12}
 #define SENSOR_INFO_PRESSURE			{"pressure_sensor", PRESSURE_SENSOR, true, REPORT_MODE_CONTINUOUS, 6, 12}
+#ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+#define SENSOR_INFO_LIGHT				{"light_sensor", LIGHT_SENSOR, true, REPORT_MODE_ON_CHANGE, 19, 19}
+#define SENSOR_INFO_LIGHT_IR			{"light_ir_sensor", LIGHT_IR_SENSOR, true, REPORT_MODE_ON_CHANGE, 13, 13}
+#define SENSOR_INFO_LIGHT_CCT			{"light_cct_sensor", LIGHT_CCT_SENSOR, true, REPORT_MODE_ON_CHANGE, 19, 19}
+#else
 #define SENSOR_INFO_LIGHT				{"light_sensor", LIGHT_SENSOR, true, REPORT_MODE_ON_CHANGE, 18, 18}
 #define SENSOR_INFO_LIGHT_IR			{"light_ir_sensor", LIGHT_IR_SENSOR, true, REPORT_MODE_ON_CHANGE, 12, 12}
-#define SENSOR_INFO_LIGHT_FLICKER			{"light_flicker_sensor", LIGHT_FLICKER_SENSOR, true, REPORT_MODE_ON_CHANGE, 2, 2}
 #define SENSOR_INFO_LIGHT_CCT			{"light_cct_sensor", LIGHT_CCT_SENSOR, true, REPORT_MODE_ON_CHANGE, 18, 18}
+#endif
+#define SENSOR_INFO_LIGHT_FLICKER			{"light_flicker_sensor", LIGHT_FLICKER_SENSOR, true, REPORT_MODE_ON_CHANGE, 2, 2}
 #define SENSOR_INFO_PROXIMITY			{"proximity_sensor", PROXIMITY_SENSOR, true, REPORT_MODE_ON_CHANGE, 3, 1}
 #define SENSOR_INFO_PROXIMITY_ALERT			{"proximity_alert_sensor", PROXIMITY_ALERT_SENSOR, true, REPORT_MODE_ON_CHANGE, 3, 1}
 #define SENSOR_INFO_PROXIMITY_RAW			{"proximity_raw", PROXIMITY_RAW, false, REPORT_MODE_ON_CHANGE, 1, 0}

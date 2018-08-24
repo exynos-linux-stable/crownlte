@@ -79,6 +79,7 @@ struct madera_drvdata {
 	int wake_lock_switch;
 
 	int fm_mute_switch;
+	int abox_vss_state;
 };
 
 struct gain_table {
@@ -108,10 +109,110 @@ static struct snd_soc_card star_madera;
 
 static struct clk *xclkout;
 
+static int star_rdma_madera_hw_params(struct snd_pcm_substream *substream,
+				      struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct madera_drvdata *drvdata = card->drvdata;
+	int ret = 0;
+
+	dev_info(drvdata->dev, "%s: %s-%d %dch, %dHz, %dbytes, %dbit\n",
+			__func__, rtd->dai_link->name, substream->stream,
+			params_channels(params), params_rate(params),
+			params_buffer_bytes(params), params_width(params));
+
+	return ret;
+}
+
+static int star_rdma_madera_prepare(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct madera_drvdata *drvdata = card->drvdata;
+	int ret = 0;
+
+	dev_info(drvdata->dev, "%s: %s-%d prepare\n",
+			__func__, rtd->dai_link->name, substream->stream);
+
+	return ret;
+}
+
+static void star_rdma_madera_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct madera_drvdata *drvdata = card->drvdata;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_codec *codec;
+
+	codec = rtd->codec_dai->codec;
+
+	dev_info(drvdata->dev, "%s: codec_dai: %s\n",
+			__func__ , codec_dai->name);
+	dev_info(drvdata->dev, "%s-%d playback: %d, capture: %d, active: %d\n",
+			rtd->dai_link->name, substream->stream,
+			codec_dai->playback_active, codec_dai->capture_active,
+			codec->component.active);
+}
+
 static const struct snd_soc_ops rdma_ops = {
+	.hw_params = star_rdma_madera_hw_params,
+	.prepare = star_rdma_madera_prepare,
+	.shutdown = star_rdma_madera_shutdown,
 };
 
+static int star_wdma_madera_hw_params(struct snd_pcm_substream *substream,
+				      struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct madera_drvdata *drvdata = card->drvdata;
+	int ret = 0;
+
+	dev_info(drvdata->dev, "%s: %s-%d %dch, %dHz, %dbytes, %dbit\n",
+			__func__, rtd->dai_link->name, substream->stream,
+			params_channels(params), params_rate(params),
+			params_buffer_bytes(params), params_width(params));
+
+	return ret;
+}
+
+static int star_wdma_madera_prepare(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct madera_drvdata *drvdata = card->drvdata;
+	int ret = 0;
+
+	dev_info(drvdata->dev, "%s: %s-%d prepare\n",
+			__func__, rtd->dai_link->name, substream->stream);
+
+	return ret;
+}
+
+static void star_wdma_madera_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct madera_drvdata *drvdata = card->drvdata;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_codec *codec;
+
+	codec = rtd->codec_dai->codec;
+
+	dev_info(drvdata->dev, "%s: codec_dai: %s\n",
+			__func__ , codec_dai->name);
+	dev_info(drvdata->dev, "%s-%d playback: %d, capture: %d, active: %d\n",
+			rtd->dai_link->name, substream->stream,
+			codec_dai->playback_active, codec_dai->capture_active,
+			codec->component.active);
+}
+
 static const struct snd_soc_ops wdma_ops = {
+	.hw_params = star_wdma_madera_hw_params,
+	.prepare = star_wdma_madera_prepare,
+	.shutdown = star_wdma_madera_shutdown,
 };
 
 static int star_uaif0_madera_hw_params(struct snd_pcm_substream *substream,
@@ -1386,12 +1487,57 @@ static const struct snd_kcontrol_new vts_output_mux[] = {
 	SOC_DAPM_ENUM("VTS Virtual Output Mux", vts_output_enum),
 };
 
+static const char * const abox_vss_state_enum_texts[] = {
+	"NORMAL",
+	"INIT FAIL",
+	"SUSPENDED",
+	"PCM OPEN FAIL",
+	"ABOX STUCK",
+};
+
+SOC_ENUM_SINGLE_DECL(abox_vss_state_enum, SND_SOC_NOPM, 0,
+				abox_vss_state_enum_texts);
+
+int abox_vss_state_get(struct snd_kcontrol *kcontrol,
+					 struct snd_ctl_elem_value *ucontrol)
+{
+	struct madera_drvdata *drvdata = &star_drvdata;
+
+	ucontrol->value.enumerated.item[0] = drvdata->abox_vss_state;
+
+	return 0;
+}
+
+int abox_vss_state_put(struct snd_kcontrol *kcontrol,
+					 struct snd_ctl_elem_value *ucontrol)
+{
+	struct madera_drvdata *drvdata = &star_drvdata;
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	const unsigned int item = ucontrol->value.enumerated.item[0];
+
+	if (item >= e->items) {
+		dev_err(drvdata->dev, "%s item %d overflow\n", __func__, item);
+		return -EINVAL;
+	}
+
+	drvdata->abox_vss_state = item;
+	dev_info(drvdata->dev, "VSS STATE: %s\n", abox_vss_state_enum_texts[item]);
+
+	/* Make Call BUG_ON if ABOX vss delivers the stuck state */
+	if (!strcmp(abox_vss_state_enum_texts[item], "ABOX STUCK")) {
+		BUG_ON(1);
+	}
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new star_controls[] = {
 	SOC_DAPM_PIN_SWITCH("DMIC1"),
 	SOC_DAPM_PIN_SWITCH("DMIC2"),
 	SOC_DAPM_PIN_SWITCH("DMIC3"),
 	SOC_DAPM_PIN_SWITCH("DMIC4"),
 	SOC_DAPM_PIN_SWITCH("FM"),
+	SOC_ENUM_EXT("ABOX VSS State", abox_vss_state_enum, abox_vss_state_get, abox_vss_state_put),
 };
 
 static struct snd_soc_dapm_widget star_widgets[] = {

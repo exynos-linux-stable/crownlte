@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 768017 2018-06-18 03:09:47Z $
+ * $Id: dhd.h 767554 2018-06-14 06:37:31Z $
  */
 
 /****************
@@ -84,6 +84,10 @@ int get_scheduler_policy(struct task_struct *p);
 #ifdef WL_CFGVENDOR_SEND_HANG_EVENT
 #include <rte_ioctl.h>
 #endif /* WL_CFGVENDOR_SEND_HANG_EVENT */
+
+#ifdef DHD_ERPOM
+#include <pom.h>
+#endif /* DHD_ERPOM */
 
 #ifdef DEBUG_DPC_THREAD_WATCHDOG
 #define MAX_RESCHED_CNT 600
@@ -257,6 +261,22 @@ enum dhd_bus_devreset_type {
 #define DHD_BUS_CHECK_DOWN_OR_DOWN_IN_PROGRESS(dhdp) \
 		((dhdp)->busstate == DHD_BUS_DOWN || (dhdp)->busstate == DHD_BUS_DOWN_IN_PROGRESS)
 
+#define MAX_MTU_SZ (1600u)
+
+#define DIV64_U64(x, y)		div64_u64(x, y)
+#define DIV_U64(x, y)		div_u64(x, y)
+#define DO_DIV(x, y)		do_div(x, y)
+
+#ifndef USEC_PER_SEC
+#define USEC_PER_SEC (1000 * 1000)
+#endif /* USEC_PER_SEC */
+
+#define SEC_USEC_FMT \
+	"%llu.%6u"
+
+#define GET_SEC_USEC(t) \
+	DIV_U64(t, USEC_PER_SEC), (unsigned int)DO_DIV(t,  USEC_PER_SEC)
+
 /* Download Types */
 typedef enum download_type {
 	FW,
@@ -420,7 +440,11 @@ enum dhd_dongledump_type {
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 	DUMP_TYPE_DONGLE_HOST_EVENT,
 	DUMP_TYPE_SMMU_FAULT,
-	DUMP_TYPE_RESUMED_UNKNOWN
+	DUMP_TYPE_RESUMED_UNKNOWN,
+#ifdef DHD_ERPOM
+	DUMP_TYPE_DUE_TO_BT,
+#endif /* DHD_ERPOM */
+	DUMP_TYPE_BY_USER
 };
 
 enum dhd_hang_reason {
@@ -479,6 +503,15 @@ enum dhd_rsdb_scan_features {
 #define DHD_SDALIGN	32
 #endif // endif
 
+#define DHD_TX_CONTEXT_MASK 0xff
+#define DHD_TX_START_XMIT   0x01
+#define DHD_TX_SEND_PKT     0x02
+#define DHD_IF_SET_TX_ACTIVE(ifp, context)	\
+    ifp->tx_paths_active |= context;
+#define DHD_IF_CLR_TX_ACTIVE(ifp, context)	\
+    ifp->tx_paths_active &= ~context;
+#define DHD_IF_IS_TX_ACTIVE(ifp)	\
+	(ifp->tx_paths_active)
 /**
  * DMA-able buffer parameters
  * - dmaaddr_t is 32bits on a 32bit host.
@@ -523,6 +556,7 @@ typedef enum {
 	TPUT_PKT_TYPE_STOP
 } tput_pkt_type_t;
 
+#define TPUT_TEST_MAX_PAYLOAD 1500
 #define TPUT_TEST_WAIT_TIMEOUT_DEFAULT 5000
 
 #ifdef DHDTCPACK_SUPPRESS
@@ -614,6 +648,10 @@ typedef struct {
 #define	ECNTR_RING_NAME	"ewp_ecntr_ring"
 #endif /* DEBUGABILITY_ECNTRS_LOGGING */
 
+#if defined(DEBUGABILITY) && defined(DEBUGABILITY_ECNTRS_LOGGING)
+#error "Duplicate rings will be created since both the features are enabled"
+#endif /* DEBUGABILITY && DEBUGABILITY_ECNTRS_LOGGING */
+
 typedef enum {
 	LOG_DUMP_SECTION_GENERAL = 0,
 	LOG_DUMP_SECTION_ECNTRS,
@@ -697,8 +735,6 @@ struct cntry_locales_custom {
 
 int dhd_send_msg_to_daemon(struct sk_buff *skb, void *data, int size);
 
-#define MAX_MTU_SZ (1600u)
-
 #ifdef DMAMAP_STATS
 typedef struct dmamap_stats {
 	uint64 txdata;
@@ -715,6 +751,18 @@ typedef struct dmamap_stats {
 	uint64 tsbuf_rx_sz;
 } dma_stats_t;
 #endif /* DMAMAP_STATS */
+
+/*  see wlfc_proto.h for tx status details */
+#define DHD_MAX_TX_STATUS_MSGS     9u
+
+#ifdef TX_STATUS_LATENCY_STATS
+typedef struct dhd_if_tx_status_latency {
+	/* total number of tx_status received on this interface */
+	uint64 num_tx_status;
+	/* cumulative tx_status latency for this interface */
+	uint64 cum_tx_status_latency;
+} dhd_if_tx_status_latency_t;
+#endif /* TX_STATUS_LATENCY_STATS */
 
 /**
  * Common structure for module and instance linkage.
@@ -976,7 +1024,7 @@ typedef struct dhd_pub {
 #endif /* DHD_L2_FILTER */
 #ifdef DHD_SSSR_DUMP
 	bool sssr_inited;
-	sssr_reg_info_t sssr_reg_info;
+	sssr_reg_info_v1_t sssr_reg_info;
 	uint8 *sssr_mempool;
 	uint *sssr_d11_before[MAX_NUM_D11CORES];
 	uint *sssr_d11_after[MAX_NUM_D11CORES];
@@ -1022,8 +1070,6 @@ typedef struct dhd_pub {
 	bool	h2d_phase_supported;
 	bool	force_dongletrap_on_bad_h2d_phase;
 	uint32	dongle_trap_data;
-	bool	cto_enable;		/* enable PCIE CTO Prevention and recovery */
-	uint32	cto_threshold;	/* PCIE CTO timeout threshold */
 	bool	fw_download_done;
 	trap_t	last_trap_info; /* trap info from the last trap */
 	uint8 rand_mac_oui[DOT11_OUI_LEN];
@@ -1087,7 +1133,8 @@ typedef struct dhd_pub {
 	spinlock_t tdls_lock;
 #endif /* WLTDLS */
 	uint pcie_txs_metadata_enable;
-	bool wbtext_support;
+	uint wbtext_policy;	/* wbtext policy of dongle */
+	bool wbtext_support;	/* for product policy only */
 #ifdef SHOW_LOGTRACE
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
 	struct mutex dhd_trace_lock;
@@ -1120,6 +1167,22 @@ typedef struct dhd_pub {
 	struct _dhd_dump_file_manage *dump_file_manage;
 #endif /* DHD_DUMP_MNGR */
 	int debug_dump_subcmd;
+	wait_queue_head_t tx_completion_wait;
+	uint32 batch_tx_pkts_cmpl;
+	uint32 batch_tx_num_pkts;
+#ifdef DHD_ERPOM
+	bool enable_erpom;
+	pom_func_handler_t pom_wlan_handler;
+	int (*pom_func_register)(pom_func_handler_t *func);
+	int (*pom_func_deregister)(pom_func_handler_t *func);
+	int (*pom_toggle_reg_on)(uchar func_id, uchar reason);
+#endif /* DHD_ERPOM */
+#ifdef DHD_TID_MODE
+	int changeTIDmode;
+	int changeTIDtid;
+	uint32 changeTIDuid;
+	uint32 changeTIDdestip;
+#endif // endif
 } dhd_pub_t;
 
 typedef struct {
@@ -1148,11 +1211,16 @@ typedef struct {
 /* Packet Tag for PCIE Full Dongle DHD */
 typedef struct dhd_pkttag_fd {
 	uint16    flowid;   /* Flowring Id */
-	uint16    dataoff;  /* start of packet */
+	uint16    ifid;
+#ifndef DHD_PCIE_PKTID
 	uint16    dma_len;  /* pkt len for DMA_MAP/UNMAP */
 	dmaaddr_t pa;       /* physical address */
 	void      *dmah;    /* dma mapper handle */
 	void      *secdma; /* secure dma sec_cma_info handle */
+#endif /* !DHD_PCIE_PKTID */
+#ifdef TX_STATUS_LATENCY_STATS
+	uint64	   q_time_us; /* time when tx pkt queued to flowring */
+#endif /* TX_STATUS_LATENCY_STATS */
 } dhd_pkttag_fd_t;
 
 /* Packet Tag for DHD PCIE Full Dongle */
@@ -1181,6 +1249,12 @@ typedef struct dhd_pkttag_fd {
 #define DHD_PKT_GET_SECDMA(pkt)    ((DHD_PKTTAG_FD(pkt))->secdma)
 #define DHD_PKT_SET_SECDMA(pkt, pkt_secdma) \
 	DHD_PKTTAG_FD(pkt)->secdma = (void *)(pkt_secdma)
+
+#ifdef TX_STATUS_LATENCY_STATS
+#define DHD_PKT_GET_QTIME(pkt)    ((DHD_PKTTAG_FD(pkt))->q_time_us)
+#define DHD_PKT_SET_QTIME(pkt, pkt_q_time_us) \
+	DHD_PKTTAG_FD(pkt)->q_time_us = (uint64)(pkt_q_time_us)
+#endif /* TX_STATUS_LATENCY_STATS */
 #endif /* PCIE_FULL_DONGLE */
 
 #if defined(BCMWDF)
@@ -1959,6 +2033,7 @@ static INLINE int dhd_os_tput_test_wake(dhd_pub_t * pub)
 
 extern int dhd_os_busbusy_wait_negation(dhd_pub_t * pub, uint * condition);
 extern int dhd_os_busbusy_wake(dhd_pub_t * pub);
+extern void dhd_os_tx_completion_wake(dhd_pub_t *dhd);
 extern int dhd_os_busbusy_wait_condition(dhd_pub_t *pub, uint *var, uint condition);
 int dhd_os_busbusy_wait_bitmask(dhd_pub_t *pub, uint *var,
 		uint bitmask, uint condition);
@@ -2664,8 +2739,8 @@ void dhd_show_kirqstats(dhd_pub_t *dhd);
 
 extern int dhd_start_join_timer(dhd_pub_t *pub);
 extern int dhd_stop_join_timer(dhd_pub_t *pub);
-extern int dhd_start_scan_timer(dhd_pub_t *pub);
-extern int dhd_stop_scan_timer(dhd_pub_t *pub);
+extern int dhd_start_scan_timer(dhd_pub_t *pub, bool is_escan);
+extern int dhd_stop_scan_timer(dhd_pub_t *pub, bool is_escan, uint16 sync_id);
 extern int dhd_start_cmd_timer(dhd_pub_t *pub);
 extern int dhd_stop_cmd_timer(dhd_pub_t *pub);
 extern int dhd_start_bus_timer(dhd_pub_t *pub);
@@ -2736,7 +2811,11 @@ extern bool dhd_query_bus_erros(dhd_pub_t *dhdp);
 #define DHD_SUPPORT_64BIT
 #endif /* (linux || LINUX) && CONFIG_64BIT */
 
+#if defined(DHD_ERPOM)
+extern void dhd_schedule_reset(dhd_pub_t *dhdp);
+#else
 static INLINE void dhd_schedule_reset(dhd_pub_t *dhdp) {;}
+#endif // endif
 
 extern void init_dhd_timeouts(dhd_pub_t *pub);
 extern void deinit_dhd_timeouts(dhd_pub_t *pub);
@@ -2762,6 +2841,8 @@ int dhd_parse_oui(dhd_pub_t *dhd, uint8 *inbuf, uint8 *oui, int len);
 int dhd_check_valid_ie(dhd_pub_t *dhdp, uint8 *buf, int len);
 #endif /* FILTER_IE */
 
+uint16 dhd_prot_get_ioctl_trans_id(dhd_pub_t *dhdp);
+
 #ifdef SET_PCIE_IRQ_CPU_CORE
 extern void dhd_set_irq_cpucore(dhd_pub_t *dhdp, int set);
 extern void set_irq_cpucore(unsigned int irq, int set);
@@ -2773,9 +2854,7 @@ extern void dhd_make_hang_with_reason(struct net_device *dev, const char *string
 #ifdef DHD_WAKE_STATUS
 wake_counts_t* dhd_get_wakecount(dhd_pub_t *dhdp);
 #endif /* DHD_WAKE_STATUS */
-
-extern void dhd_get_random_bytes(uint8 *buf, uint len);
-
+extern int dhd_get_random_bytes(uint8 *buf, uint len);
 #if defined(DHD_BLOB_EXISTENCE_CHECK)
 extern void dhd_set_blob_support(dhd_pub_t *dhdp, char *fw_path);
 #endif /* DHD_BLOB_EXISTENCE_CHECK */
@@ -2789,6 +2868,8 @@ extern int dhd_stop_event_ecounters(dhd_pub_t *dhd);
 int dhd_get_preserve_log_numbers(dhd_pub_t *dhd, uint32 *logset_mask);
 
 #ifdef DHD_LOG_DUMP
+void dhd_schedule_log_dump(dhd_pub_t *dhdp, void *type);
+void dhd_log_dump_trigger(dhd_pub_t *dhdp, int subcmd);
 int dhd_log_dump_ring_to_file(dhd_pub_t *dhdp, void *ring_ptr, void *file,
 		unsigned long *file_posn, log_dump_section_hdr_t *sec_hdr);
 int dhd_log_dump_cookie_to_file(dhd_pub_t *dhdp, void *fp, unsigned long *f_pos);
@@ -2849,6 +2930,13 @@ typedef struct _dhd_dump_file_manage {
 
 extern void dhd_dump_file_manage_enqueue(dhd_pub_t *dhd, char *dump_path, char *fname);
 #endif /* DHD_DUMP_MNGR */
+extern uint32 wlreg_l;
+extern uint32 wlreg_h;
+
+extern uint32 wlreg_len_l;
+extern uint32 wlreg_len_h;
+
+extern int dhd_get_host_whitelist_region(void *buf, uint len);
 #ifdef DHD_DUMP_PCIE_RINGS
 extern int dhd_d2h_h2d_ring_dump(dhd_pub_t *dhd, void *file, unsigned long *file_posn);
 #endif /* DHD_DUMP_PCIE_RINGS */

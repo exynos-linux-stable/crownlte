@@ -41,6 +41,8 @@ typedef enum {
 	TYPE_C_ATTACH_DFP = 1, /* Host */
 	TYPE_C_ATTACH_UFP = 2, /* Device */
 	TYPE_C_ATTACH_DRP = 3, /* Dual role */
+	TYPE_C_ATTACH_SRC = 4, /* SRC */
+	TYPE_C_ATTACH_SNK = 5, /* SNK */
 } CCIC_OTP_MODE;
 
 #define DUAL_ROLE_SET_MODE_WAIT_MS 1500

@@ -151,7 +151,6 @@ struct max77705_usbc_platform_data {
 	int host_turn_on_event;
 	int host_turn_on_wait_time;
 	int is_samsung_accessory_enter_mode;
-	int send_vdm_identity;
 	u8 sbu[2];
 	u8 is_sbu_done;
 	u8 selftest;
@@ -186,7 +185,6 @@ struct max77705_usbc_platform_data {
 	int power_role;
 	int data_role;
 	int try_state_change;
-	struct delayed_work role_swap_work;
 #endif
 	struct delayed_work usb_external_notifier_register_work;
 	struct notifier_block usb_external_notifier_nb;
@@ -224,6 +222,15 @@ typedef enum {
 	MPSM_OFF = 0,
 	MPSM_ON = 1,
 } CCIC_DEVICE_MPSM;
+
+#define DATA_ROLE_SWAP 1
+#define POWER_ROLE_SWAP 2
+#define VCONN_ROLE_SWAP 3
+#define MANUAL_ROLE_SWAP 4
+
+#define ROLE_ACCEPT			0x1
+#define ROLE_REJECT			0x2
+#define ROLE_BUSY			0x3
 
 int max77705_pd_init(struct max77705_usbc_platform_data *usbc_data);
 int max77705_cc_init(struct max77705_usbc_platform_data *usbc_data);

@@ -50,8 +50,9 @@ EXPORT_SYMBOL_GPL(create_function_device);
 #endif
 
 #ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
-void set_usb_enumeration_state(bool state);
+void set_usb_enumeration_state(int state);
 void set_usb_enable_state(void);
+extern int dwc3_gadget_get_cmply_link_state(struct usb_gadget *g);
 #endif
 
 #define CHIPID_SIZE	(16)
@@ -162,6 +163,30 @@ struct gadget_config_name {
 	struct config_group group;
 	struct list_head list;
 };
+
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
+int dwc3_gadget_get_cmply_link_state_wrapper(void)
+{
+	struct gadget_info *dev;
+	struct usb_composite_dev *cdev;
+	struct usb_gadget		*gadget;
+	int ret = -ENODEV;
+
+	if (android_device && !IS_ERR(android_device)) {
+		dev = dev_get_drvdata(android_device);
+		cdev = &dev->cdev;
+		if (cdev) {
+		 	gadget = cdev->gadget;
+			 if (gadget)
+				ret = dwc3_gadget_get_cmply_link_state(gadget);
+			 else
+			 	pr_err("usb: %s:gadget pointer is null\n", __func__);
+		 }
+	}
+	return ret;
+}
+EXPORT_SYMBOL(dwc3_gadget_get_cmply_link_state_wrapper);
+#endif
 
 static int usb_string_copy(const char *s, char **s_copy)
 {
@@ -1508,7 +1533,10 @@ static void android_work(struct work_struct *data)
 	bool status[3] = { false, false, false };
 	unsigned long flags;
 	bool uevent_sent = false;
-
+	if (!android_device && IS_ERR(android_device)) {
+		pr_info("usb: cannot send uevent because android_device not available \n");
+		return;
+	}	
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config)
 		status[1] = true;
@@ -1968,15 +1996,17 @@ static struct device_attribute *android_usb_attributes[] = {
 
 static int android_device_create(struct gadget_info *gi)
 {
+	struct device *device;
 	struct device_attribute **attrs;
 	struct device_attribute *attr;
 
 	INIT_WORK(&gi->work, android_work);
-	android_device = device_create(android_class, NULL,
+	device = device_create(android_class, NULL,
 				MKDEV(0, 0), NULL, "android0");
-	if (IS_ERR(android_device))
-		return PTR_ERR(android_device);
+	if (IS_ERR(device))
+		return PTR_ERR(device);
 
+	android_device = device;
 	dev_set_drvdata(android_device, gi);
 
 	attrs = android_usb_attributes;
@@ -2069,8 +2099,10 @@ static struct config_group *gadgets_make(
 	if (!gi->composite.gadget_driver.function)
 		goto err;
 
-	if (android_device_create(gi) < 0)
+	if (android_device_create(gi) < 0) {
+		kfree(gi->composite.gadget_driver.function);
 		goto err;
+	}	
 
 	return &gi->group;
 

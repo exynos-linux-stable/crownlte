@@ -1,5 +1,5 @@
-#ifndef _HRM_MAX86915_H_
-#define _HRM_MAX86915_H_
+#ifndef _MAX86915_H_
+#define _MAX86915_H_
 
 #include <linux/delay.h>
 #include <linux/i2c.h>
@@ -32,8 +32,9 @@
 #include <linux/of_gpio.h>
 #endif
 
-/*MAX86915 Register Map*/
+#define HEADER_VERSION		"2"
 
+/* MAX86915 Register Map */
 #define MAX86915_INTERRUPT_STATUS		0x00
 #define PWR_RDY_MASK				0x01
 #define PROX_INT_MASK				0x10
@@ -119,27 +120,20 @@
 #define RED_LED_CH		2
 #define GREEN_LED_CH	3
 #define BLUE_LED_CH		4
+#define MAX_LED_NUM						4
 
 #define NUM_BYTES_PER_SAMPLE			3
-#define MAX_LED_NUM						4
 
 #define MAX86915_COUNT_MAX				65532
 #define MAX86915_FIFO_SIZE				32
-
-#define MAX86915_READ_REGFILE_PATH "/data/HRM/MAX86915_READ_REG.txt"
-#define MAX86915_WRITE_REGFILE_PATH "/data/HRM/MAX86915_WRITE_REG.txt"
-
-#define I2C_WRITE_ENABLE		0x00
-#define I2C_READ_ENABLE			0x01
 
 #define PWR_ON		1
 #define PWR_OFF		0
 #define PM_RESUME	1
 #define PM_SUSPEND	0
 #define NAME_LEN		32
-#define MAX_BUF_LEN	512
 
-#define MAX_EOL_RESULT 256
+#define MAX_EOL_RESULT 316
 
 /* End of Line Test */
 #define SELF_IR_CH		0
@@ -153,28 +147,33 @@
 #define INTEGER_LEN			16
 #define DECIMAL_LEN			10
 
-#define SELF_SQ1_DEFAULT_SPO2		0x07
 #define MAX_I2C_BLOCK_SIZE		252
 
 #define SELF_MODE_400HZ		0
 #define SELF_MODE_100HZ		1
-
 #define SELF_DIVID_400HZ	1
 #define SELF_DIVID_100HZ	4
-
 
 /* #define HRM_DBG */
 /* #define HRM_INFO */
 
+#ifndef HRM_dbg
 #ifdef HRM_DBG
 #define HRM_dbg(format, arg...)		\
 				printk(KERN_DEBUG "HRM_dbg : "format, ##arg);
+#define HRM_err(format, arg...)		\
+				printk(KERN_DEBUG "HRM_err : "format, ##arg);
 #else
 #define HRM_dbg(format, arg...)		{if (hrm_debug)\
 				printk(KERN_DEBUG "HRM_dbg : "format, ##arg);\
 					}
+#define HRM_err(format, arg...)		{if (hrm_debug)\
+				printk(KERN_DEBUG "HRM_err : "format, ##arg);\
+					}
+#endif
 #endif
 
+#ifndef HRM_info
 #ifdef HRM_INFO
 #define HRM_info(format, arg...)	\
 				printk(KERN_INFO "HRM_info : "format, ##arg);
@@ -183,8 +182,9 @@
 				printk(KERN_INFO "HRM_info : "format, ##arg);\
 					}
 #endif
+#endif
 
-enum _PART_TYPE {
+enum {
 	PART_TYPE_NONE			= 0,
 	PART_TYPE_MAX86915_ES		= 30,
 	PART_TYPE_MAX86915_CS_15	= 31,
@@ -192,50 +192,29 @@ enum _PART_TYPE {
 	PART_TYPE_MAX86915_CS_22	= 33,
 	PART_TYPE_MAX86915_CS_211	= 34,
 	PART_TYPE_MAX86915_CS_221	= 35,
-} PART_TYPE;
+	PART_TYPE_MAX86917_1		= 40,
+	PART_TYPE_MAX86917_2		= 41,
+};
 
-enum _AWB_CONFIG {
+enum {
 	AWB_CONFIG0 = 0,
 	AWB_CONFIG1,
 	AWB_CONFIG2,
-} AWB_CONFIG;
-
-enum {
-	LED1_UP		= 1 << 0,
-	LED1_DOWN	= 1 << 1,
-	LED2_UP		= 1 << 2,
-	LED2_DOWN	= 1 << 3,
-	LED1_SET	= 1 << 4,
-	LED2_SET	= 1 << 5,
-} LED_CON;
-
-static enum {
-	S_INIT = 0,
-	S_F_A,
-	S_CAL,
-	S_F_D,
-	S_ERR,
-	S_UNKNOWN
-} agc_pre_s, agc_cur_s;
-
-enum {
-	DEBUG_WRITE_REG_TO_FILE = 1,
-	DEBUG_WRITE_FILE_TO_REG = 2,
-	DEBUG_SHOW_DEBUG_INFO = 3,
-	DEBUG_ENABLE_AGC = 4,
-	DEBUG_DISABLE_AGC = 5,
 };
 
 enum {
+	DEBUG_REG_STATUS = 1,
+	DEBUG_ENABLE_AGC,
+	DEBUG_DISABLE_AGC,
+};
+
+enum agc_mode {
+	M_NONE,
 	M_HRM,
-	M_HRMLED_IR,
-	M_HRMLED_RED,
-	M_HRMLED_BOTH,
-	M_SDK,
-	M_NONE
+	M_SDK
 };
 
-enum _EOL_STATE_TYPE_NEW {
+enum  {
 	_EOL_STATE_TYPE_NEW_INIT = 0,
 	_EOL_STATE_TYPE_NEW_FLICKER_INIT, /* step 1. flicker_step. */
 	_EOL_STATE_TYPE_NEW_FLICKER_MODE,
@@ -248,16 +227,13 @@ enum _EOL_STATE_TYPE_NEW {
 	_EOL_STATE_TYPE_NEW_FREQ_MODE,
 	_EOL_STATE_TYPE_NEW_END,
 	_EOL_STATE_TYPE_NEW_STOP,
-} _EOL_STATE_TYPE_NEW;
+};
 
-enum hrm_mode {
+enum op_mode {
 	MODE_NONE			= 0,
 	MODE_HRM			= 1,
 	MODE_AMBIENT		= 2,
 	MODE_PROX			= 3,
-	MODE_HRMLED_IR		= 4,
-	MODE_HRMLED_RED		= 5,
-	MODE_HRMLED_BOTH	= 6,
 	MODE_SDK_IR			= 10,
 	MODE_SDK_RED		= 11,
 	MODE_SDK_GREEN		= 12,
@@ -324,6 +300,11 @@ struct  max86915_eol_hrm_data {
 	u64 sum[SELF_MAX_CH_NUM];
 	u64 average[SELF_MAX_CH_NUM];
 	u64 std_sum[SELF_MAX_CH_NUM];
+	u64 std_sum2[SELF_MAX_CH_NUM];
+	int min_pos[SELF_MAX_CH_NUM];
+	int max_pos[SELF_MAX_CH_NUM];
+	int min_val[SELF_MAX_CH_NUM];
+	int max_val[SELF_MAX_CH_NUM];
 	int done;
 };
 /* step freq_step */
@@ -352,7 +333,7 @@ struct  max86915_eol_data {
 	struct  max86915_eol_freq_data eol_freq_data;	/* test the ir routine. */
 };
 
-struct hrm_enable_count {
+struct mode_count {
 	s32 hrm_cnt;
 	s32 amb_cnt;
 	s32 prox_cnt;
@@ -361,8 +342,8 @@ struct hrm_enable_count {
 	s32 unkn_cnt;
 };
 
-struct hrm_output_data {
-	enum hrm_mode mode;
+struct output_data {
+	enum op_mode mode;
 	s32 main_num;
 	s32 data_main[6];
 	s32 sub_num;
@@ -372,10 +353,7 @@ struct hrm_output_data {
 };
 
 /* max86915 Data Structure */
-struct max869_device_data {
-#ifdef CONFIG_SPI_TO_I2C_FPGA
-	struct platform_device *pdev;
-#endif
+struct max86915_device_data {
 	struct i2c_client *client;
 	struct device *dev;
 	struct input_dev *hrm_input_dev;
@@ -390,32 +368,30 @@ struct max869_device_data {
 	char *led_3p3;
 	char *vdd_1p8;
 	char *i2c_1p8;
-	enum hrm_mode hrm_enabled_mode;
-	enum hrm_mode hrm_prev_mode;
+	enum op_mode enabled_mode;
+	enum op_mode susp_mode;
 	u32 sampling_period_ns;
 	u8 mode_sdk_enabled;
 	u8 mode_sdk_prev;
 	u8 regulator_state;
-	s32 hrm_int;
-	s32 hrm_en;
-	s32 hrm_irq;
+	s32 pin_hrm_int;
+	s32 pin_hrm_en;
+	s32 dev_irq;
 	u8 irq_state;
-	u32 led_current;
-	u32 xtalk_code;
 	s32 hrm_threshold;
+	s32 prox_threshold;
 	s32 eol_test_is_enable;
 	u8 eol_test_status;
 	s32 pre_eol_test_is_enable;
 	u32 reg_read_buf;
 	u8 debug_mode;
-	struct hrm_enable_count mode_cnt;
+	struct mode_count mode_cnt;
 	char *lib_ver;
 #ifdef CONFIG_ARCH_QCOM
 	struct pm_qos_request pm_qos_req_fpm;
 #endif
 	bool pm_state;
 
-	s32 hrm_mode;
 	u8 agc_mode;
 	char *eol_test_result;
 	u8 part_type;
@@ -431,6 +407,8 @@ struct max869_device_data {
 	u8 default_current2;
 	u8 default_current3;
 	u8 default_current4;
+	u32 init_current[4];
+	u8 led_range[4];
 
 	u8 xtalk_code1;
 	u8 xtalk_code2;
@@ -446,12 +424,6 @@ struct max869_device_data {
 	int flicker_data_cnt;
 
 	/* AGC routine start */
-	u8 ir_led;
-	u8 red_led;
-	u8 green_led;
-	u8 blue_led;
-
-	bool agc_is_enable;
 	int agc_sum[4];
 	u32 agc_current[4];
 	u8 agc_led_set;
@@ -466,7 +438,7 @@ struct max869_device_data {
 	s32 reached_thresh[4];
 	s32 threshold_default;
 
-	int (*update_led)(struct max869_device_data*, int, int);
+	int (*update_led)(struct max86915_device_data*, int, int);
 	/* AGC routine end */
 
 	struct max86915_eol_data eol_data;
@@ -487,7 +459,6 @@ struct max869_device_data {
 	int agc_enabled;
 	int fifo_data[MAX_LED_NUM][MAX86915_FIFO_SIZE];
 	int fifo_samples;
-	int vdd_oor_cnt;
 	u16 agc_sample_cnt[4];
 
 	int prev_ppg[MAX_LED_NUM];
@@ -509,4 +480,4 @@ extern void sensors_unregister(struct device *dev,
 
 extern unsigned int lpcharge;
 
-#endif /* _HRM_MAX86915_H_ */
+#endif /* _MAX86915_H_ */

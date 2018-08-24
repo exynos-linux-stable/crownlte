@@ -297,20 +297,16 @@ static int rx_raw_misc(struct sk_buff *skb)
 }
 
 #ifdef CONFIG_MODEM_IF_NET_GRO
-static int region = 0;
-module_param(region, int, S_IRUGO | S_IWUSR | S_IWGRP);
-
 static int check_gro_support(struct sk_buff *skb)
 {
-	if (region) {
-		switch (skb->data[0] & 0xF0) {
+	switch (skb->data[0] & 0xF0) {
 		case 0x40:
 			return (ip_hdr(skb)->protocol == IPPROTO_TCP);
 
 		case 0x60:
 			return (ipv6_hdr(skb)->nexthdr == IPPROTO_TCP);
-		}
 	}
+
 	return 0;
 }
 #else

@@ -384,8 +384,8 @@ void s5p_mfc_qos_on(struct s5p_mfc_ctx *ctx)
 	struct s5p_mfc_qos *qos_table = pdata->qos_table;
 	struct s5p_mfc_ctx *qos_ctx;
 	struct bts_bw mfc_bw, mfc_bw_ctx;
-	unsigned long hw_mb = 0, total_mb = 0;
-	unsigned int fw_time, sw_time, total_fps = 0;
+	unsigned long hw_mb = 0, total_mb = 0, total_fps = 0;
+	unsigned int fw_time, sw_time;
 	int i, found = 0, enc_found = 0;
 	int start_qos_step;
 
@@ -422,7 +422,7 @@ void s5p_mfc_qos_on(struct s5p_mfc_ctx *ctx)
 
 		total_mb = ((1000000 * hw_mb) / (1000000 - (total_fps * sw_time)));
 		mfc_debug(4, "QoS table[%d] fw_time: %dus, hw_mb: %ld, "
-				"sw_time: %d, total_fps: %d, total_mb: %ld\n",
+				"sw_time: %d, total_fps: %ld, total_mb: %ld\n",
 				i, fw_time, hw_mb, sw_time, total_fps, total_mb);
 
 		if ((total_mb > qos_table[i].threshold_mb) || (i == 0))
@@ -442,8 +442,8 @@ void s5p_mfc_qos_off(struct s5p_mfc_ctx *ctx)
 	struct s5p_mfc_qos *qos_table = pdata->qos_table;
 	struct s5p_mfc_ctx *qos_ctx;
 	struct bts_bw mfc_bw, mfc_bw_ctx;
-	unsigned long hw_mb = 0, total_mb = 0;
-	unsigned int fw_time, sw_time, total_fps = 0;
+	unsigned long hw_mb = 0, total_mb = 0, total_fps = 0;
+	unsigned int fw_time, sw_time;
 	int i, found = 0, enc_found = 0;
 	int start_qos_step;
 
@@ -486,7 +486,7 @@ void s5p_mfc_qos_off(struct s5p_mfc_ctx *ctx)
 
 		total_mb = ((1000000 * hw_mb) / (1000000 - (total_fps * sw_time)));
 		mfc_debug(4, "QoS table[%d] fw_time: %dus, hw_mb: %ld, "
-				"sw_time: %d, total_fps: %d, total_mb: %ld\n",
+				"sw_time: %d, total_fps: %ld, total_mb: %ld\n",
 				i, fw_time, hw_mb, sw_time, total_fps, total_mb);
 
 		if ((total_mb > qos_table[i].threshold_mb) || (total_mb == 0) || (i == 0))

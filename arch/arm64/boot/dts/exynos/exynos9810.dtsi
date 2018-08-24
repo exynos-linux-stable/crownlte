@@ -437,7 +437,7 @@
 		    <0x0 0x10101200 0x100>;
 		reg-names = "gpio_alive_base",
 				"gicd_ispendrn_base";
-		num-eint = <32>;
+		num-eint = <34>;
 		num-gic = <16>;
 		suspend_mode_idx = <8>;		/* SYS_SLEEP */
 		suspend_psci_idx = <133>;	/* PSCI_SYSTEM_SLEEP */
@@ -3350,6 +3350,7 @@
 		clocks = <&clock GATE_MSCL>;
 		clock-names = "gate";
 		iommus = <&sysmmu_g2d2>;
+		dma-coherent;
 
 		/* MIF / INT */
 		mscl_qos_table = <
@@ -3569,75 +3570,6 @@
 		compatible = "samsung,exynos-repeater";
 		/* power domain */
 		samsung,power-domain = <&pd_g2d>;
-	};
-
-	sysmmu_dcf: sysmmu@16A30000 {
-		compatible = "samsung,exynos-sysmmu";
-		reg = <0x0 0x16A30000 0x9000>;
-		interrupts = <0 INTREQ_BLK_DCF_SYSMMU_DCF_O_INTERRUPT_NONSECURE 0>,
-			     <0 INTREQ_BLK_DCF_SYSMMU_DCF_O_INTERRUPT_SECURE 0>;
-		qos = <15>;
-		clock-names = "aclk";
-		clocks = <&clock GATE_IS_DCF_SYSMMU>;
-		port-name = "CIP1/2";
-		sysmmu,secure-irq;
-		sysmmu,secure_base = <0x16A20000>;
-		sysmmu,tlb_property =
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_READWRITE(0x0) | SYSMMU_BL1) SYSMMU_NOID>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_READWRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x1)>;
-		#iommu-cells = <0>;
-	};
-
-	iommu-domain_dcf {
-		compatible = "samsung,exynos-iommu-bus";
-		#address-cells = <2>;
-		#size-cells = <1>;
-		ranges;
-
-		domain-clients = <&dummy_dcf>;
-	};
-
-	dummy_dcf: dummy_dcf {
-		compatible = "samsung,exynos8890-mmu_test";
-		reg = <0x0 0xCAFE0000 0x1000>;
-		interrupts = <0 INTREQ__USI_CMGP00 0>;
-		iommus = <&sysmmu_dcf>;
-	};
-
-	sysmmu_dcrd: sysmmu@16830000 {
-		compatible = "samsung,exynos-sysmmu";
-		reg = <0x0 0x16830000 0x9000>;
-		interrupts = <0 INTREQ_BLK_DCRD_SYSMMU_DCRD_O_INTERRUPT_NONSECURE 0>,
-			     <0 INTREQ_BLK_DCRD_SYSMMU_DCRD_O_INTERRUPT_SECURE 0>;
-		qos = <15>;
-		clock-names = "aclk";
-		clocks = <&clock GATE_IS_DCRD_SYSMMU>;
-		port-name = "DCP";
-		sysmmu,secure-irq;
-		sysmmu,secure_base = <0x16820000>;
-		sysmmu,tlb_property =
-			<(SYSMMU_PORT_NO_PREFETCH_READ(0x0) | SYSMMU_BL32) SYSMMU_NOID>,
-			<(SYSMMU_PORT_NO_PREFETCH_READ(0x1) | SYSMMU_BL32) SYSMMU_ID_MASK(0x1, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x0, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x1, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x3, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x4, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x5, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x6, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x7, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x8, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0x9, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xA, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xB, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xC, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x2, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x3, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x4, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_READ(0x1)  | SYSMMU_BL1) SYSMMU_ID_MASK(0x5, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xD, 0x1F)>,
-			<(SYSMMU_PORT_PREFETCH_PREDICTION_WRITE(0x1) | SYSMMU_BL1) SYSMMU_ID_MASK(0xE, 0x1F)>;
-		#iommu-cells = <0>;
 	};
 
 	sysmmu_isphq: sysmmu@16650000 {
@@ -5013,6 +4945,11 @@
 		quad_change_ms = <15>;
 		big_heavy_thr = <600>;
 		lit_heavy_thr = <180>;
+		big_idle_thr = <106>;
+		lit_idle_thr = <46>;
+		ldsum_heavy_thr = <800>;
+		ldsum_enabled = <0>;
+		skip_lit_enabled = <0>;
 		cl_busy_ratio = <65>;
 		/* single_freq is parsed from ECT */
 		dual_freq = <2314000>;
@@ -5113,12 +5050,12 @@
 						  2652000 1794000
 						  2496000 1794000
 						  2314000 1794000
-						  2158000 1539000
-						  2002000 1539000
-						  1924000 1539000
-						  1794000 1539000
-						  1690000 1014000
-						  1586000  845000
+						  2158000 1794000
+						  2002000 1794000
+						  1924000 1794000
+						  1794000 1794000
+						  1690000 1539000
+						  1586000 1014000
 						  1469000  845000
 						  1261000  676000
 						  1170000  676000

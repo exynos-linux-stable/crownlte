@@ -46,9 +46,11 @@ enum power_supply_ext_property {
 	POWER_SUPPLY_EXT_PROP_WIRELESS_TX_CMD,
 	POWER_SUPPLY_EXT_PROP_WIRELESS_TX_VAL,
 	POWER_SUPPLY_EXT_PROP_WIRELESS_TX_ID,
+	POWER_SUPPLY_EXT_PROP_WIRELESS_TX_CHG_ERR,
 	POWER_SUPPLY_EXT_PROP_AICL_CURRENT,
 	POWER_SUPPLY_EXT_PROP_CHECK_MULTI_CHARGE,
 	POWER_SUPPLY_EXT_PROP_CHIP_ID,
+	POWER_SUPPLY_EXT_PROP_ERROR_CAUSE,
 	POWER_SUPPLY_EXT_PROP_SYSOVLO,
 	POWER_SUPPLY_EXT_PROP_VBAT_OVP,
 	POWER_SUPPLY_EXT_PROP_USB_CONFIGURE,
@@ -64,6 +66,7 @@ enum power_supply_ext_property {
 	POWER_SUPPLY_EXT_PROP_CHGINSEL,
 	POWER_SUPPLY_EXT_PROP_OVERHEAT_HICCUP,
 	POWER_SUPPLY_EXT_PROP_MONITOR_WORK,
+	POWER_SUPPLY_EXT_PROP_MST_STATUS,
 };
 
 enum sec_battery_usb_conf {
@@ -76,6 +79,7 @@ enum sec_battery_rp_curr {
 	RP_CURRENT_RP1 = 500,
 	RP_CURRENT_RP2 = 1500,
 	RP_CURRENT_RP3 = 3000,
+	RP_CURRENT_LDU_RP3 = 2100,
 };
 
 enum power_supply_ext_health {
@@ -322,6 +326,10 @@ enum sec_battery_measure_input {
 	SEC_BATTERY_IIN_UA,
 	SEC_BATTERY_VBYP,
 };
+
+#define SEC_BAT_ERROR_CAUSE_NONE		0x0000
+#define SEC_BAT_ERROR_CAUSE_FG_INIT_FAIL	0x0001
+#define SEC_BAT_ERROR_CAUSE_I2C_FAIL		0xFFFFFFFF
 
 struct sec_bat_adc_api {
 	bool (*init)(struct platform_device *);
@@ -897,6 +905,7 @@ struct sec_battery_platform_data {
 	int siop_wireless_charging_limit_current;
 	int siop_hv_wireless_input_limit_current;
 	int siop_hv_wireless_charging_limit_current;
+	int wireless_otg_input_current;
 	int wc_hero_stand_cc_cv;
 	int wc_hero_stand_cv_current;
 	int wc_hero_stand_hv_cv_current;

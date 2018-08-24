@@ -59,7 +59,6 @@ obj-$(CONFIG_MCU_IPC)           += mcu_ipc/
 obj-$(CONFIG_SEC_SIPC_MODEM_IF) += modem_v1/
 obj-$(CONFIG_SEC_MODEM_IF) 	+= modem_if/
 obj-$(CONFIG_MEMORY_STATE_TIME)	+= memory_state_time.o
-obj-$(CONFIG_DEV_RIL_BRIDGE)	+= dev_ril_bridge/
 
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_core.o
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_bugs.o
@@ -83,6 +82,3 @@ OBJCOPYFLAGS_lkdtm_rodata_objcopy.o := \
 targets += lkdtm_rodata.o lkdtm_rodata_objcopy.o
 $(obj)/lkdtm_rodata_objcopy.o: $(obj)/lkdtm_rodata.o FORCE
 	$(call if_changed,objcopy)
-
-# Integrity TEE Driver
-obj-$(CONFIG_FIVE_TEE_DRIVER) += five_tee_driver/

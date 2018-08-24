@@ -39,7 +39,7 @@
 #include "client.h"
 #include "admin.h"
 
-static struct admin_ctx {
+static struct {
 	struct mutex admin_tgid_mutex;  /* Lock for admin_tgid below */
 	pid_t admin_tgid;
 	int (*tee_start_cb)(void);
@@ -306,7 +306,7 @@ end:
 	if (ret)
 		request_cancel();
 
-	mc_dev_devel("request_send ret=%d", ret);
+	mc_dev_devel("%s ret=%d", __func__, ret);
 	return ret;
 }
 
@@ -507,6 +507,9 @@ end:
 static void mc_admin_sendcrashdump(void)
 {
 	int ret = 0;
+
+	/* Prevent daemon reconnection */
+	admin_ctx.last_start_ret = -EHOSTUNREACH;
 
 	/* Lock communication channel */
 	channel_lock();
@@ -1080,7 +1083,7 @@ int mc_admin_init(struct cdev *cdev, int (*tee_start_cb)(void),
 	/* Register the call back for starting the secure world */
 	admin_ctx.tee_start_cb = tee_start_cb;
 	admin_ctx.tee_stop_cb = tee_stop_cb;
-	admin_ctx.last_start_ret = 1;
+	admin_ctx.last_start_ret = TEE_START_NOT_TRIGGERED;
 	return 0;
 }
 

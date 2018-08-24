@@ -439,16 +439,24 @@ int repeater_ioctl_start(struct repeater_context *ctx)
 {
 	int ret = 0;
 	unsigned long flags;
+	struct shared_buffer *shr_bufs;
 
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
+	print_repeater_debug(RPT_INT_INFO, "ctx_status %d, fps %d\n",
+		ctx->ctx_status, ctx->info.fps);
 
 	spin_lock_irqsave(&repeater_spinlock, flags);
 
 	if (ctx->ctx_status == REPEATER_CTX_MAP) {
+		INIT_DELAYED_WORK(&ctx->encoding_work, encoding_work_handler);
+		shr_bufs = &ctx->shared_bufs;
+		init_shared_buffer(shr_bufs, MAX_SHARED_BUF_NUM);
 		ctx->ctx_status = REPEATER_CTX_START;
 		if (ctx->info.fps == 30) {
-			schedule_delayed_work(&ctx->encoding_work,
+			ret = schedule_delayed_work(&ctx->encoding_work,
 				usecs_to_jiffies(1));
+			print_repeater_debug(RPT_INT_INFO,
+				"schedule_delayed_work ret %d\n", ret);
 		}
 	} else {
 		print_repeater_debug(RPT_ERROR, "%s, ctx_status is invalid %d\n",
@@ -468,17 +476,24 @@ int repeater_ioctl_stop(struct repeater_context *ctx)
 	unsigned long flags;
 
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
+	print_repeater_debug(RPT_INT_INFO, "ctx_status %d\n", ctx->ctx_status);
 
 	spin_lock_irqsave(&repeater_spinlock, flags);
 
 	if (ctx->ctx_status == REPEATER_CTX_START ||
-			ctx->ctx_status == REPEATER_CTX_PAUSE)
+			ctx->ctx_status == REPEATER_CTX_PAUSE) {
 		ctx->ctx_status = REPEATER_CTX_MAP;
-	else
+		spin_unlock_irqrestore(&repeater_spinlock, flags);
+
+		ret = cancel_delayed_work_sync(&ctx->encoding_work);
+		print_repeater_debug(RPT_INT_INFO,
+			"cancel_delayed_work_sync ret %d\n", ret);
+	} else {
+		spin_unlock_irqrestore(&repeater_spinlock, flags);
+
 		print_repeater_debug(RPT_ERROR, "%s, ctx_status is invalid %d\n",
 			__func__, ctx->ctx_status);
-
-	spin_unlock_irqrestore(&repeater_spinlock, flags);
+	}
 
 	print_repeater_debug(RPT_INT_INFO, "%s--\n", __func__);
 
@@ -492,8 +507,7 @@ int repeater_ioctl_pause(struct repeater_context *ctx)
 	unsigned long flags;
 
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
-
-	cancel_delayed_work_sync(&ctx->encoding_work);
+	print_repeater_debug(RPT_INT_INFO, "ctx_status %d\n", ctx->ctx_status);
 
 	spin_lock_irqsave(&repeater_spinlock, flags);
 
@@ -501,12 +515,17 @@ int repeater_ioctl_pause(struct repeater_context *ctx)
 		cur_ktime = ktime_get();
 		ctx->pause_time = ktime_to_us(cur_ktime);
 		ctx->ctx_status = REPEATER_CTX_PAUSE;
+		spin_unlock_irqrestore(&repeater_spinlock, flags);
+
+		ret = cancel_delayed_work_sync(&ctx->encoding_work);
+		print_repeater_debug(RPT_INT_INFO,
+			"cancel_delayed_work_sync ret %d\n", ret);
 	} else {
+		spin_unlock_irqrestore(&repeater_spinlock, flags);
+
 		print_repeater_debug(RPT_ERROR, "%s, ctx_status is invalid %d\n",
 			__func__, ctx->ctx_status);
 	}
-
-	spin_unlock_irqrestore(&repeater_spinlock, flags);
 
 	print_repeater_debug(RPT_INT_INFO, "%s--\n", __func__);
 
@@ -520,16 +539,20 @@ int repeater_ioctl_resume(struct repeater_context *ctx)
 	unsigned long flags;
 
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
+	print_repeater_debug(RPT_INT_INFO, "ctx_status %d\n", ctx->ctx_status);
 
 	spin_lock_irqsave(&repeater_spinlock, flags);
 
 	if (ctx->ctx_status == REPEATER_CTX_PAUSE) {
+		INIT_DELAYED_WORK(&ctx->encoding_work, encoding_work_handler);
 		cur_ktime = ktime_get();
 		ctx->resume_time = ktime_to_us(cur_ktime);
 		ctx->paused_time += ctx->resume_time - ctx->pause_time;
 		ctx->ctx_status = REPEATER_CTX_START;
-		schedule_delayed_work(&ctx->encoding_work,
+		ret = schedule_delayed_work(&ctx->encoding_work,
 			usecs_to_jiffies(1));
+		print_repeater_debug(RPT_INT_INFO,
+			"schedule_delayed_work ret %d\n", ret);
 	} else {
 		print_repeater_debug(RPT_ERROR, "%s, ctx_status is invalid %d\n",
 			__func__, ctx->ctx_status);
@@ -609,7 +632,6 @@ static int repeater_open(struct inode *inode, struct file *filp)
 	ctx->paused_time = 0;
 	ctx->pause_time = 0;
 	ctx->resume_time = 0;
-	INIT_DELAYED_WORK(&ctx->encoding_work, encoding_work_handler);
 	ctx->time_stamp_us = 33333;
 	ctx->last_encoding_time_us = 0;
 
@@ -635,8 +657,6 @@ static int repeater_release(struct inode *inode, struct file *filp)
 	unsigned long flags;
 
 	print_repeater_debug(RPT_INT_INFO, "%s++\n", __func__);
-
-	cancel_delayed_work_sync(&ctx->encoding_work);
 
 	if (ctx->ctx_status == REPEATER_CTX_START ||
 			ctx->ctx_status == REPEATER_CTX_PAUSE)

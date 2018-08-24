@@ -55,6 +55,7 @@ obj-$(CONFIG_SENSORS_HRM_MAX86902)	+= hrm_max86902.o
 obj-$(CONFIG_SENSORS_HRM_ADPD143)	+= hrm_adpd143.o
 obj-$(CONFIG_SENSORS_HRMSENSOR)		+= hrmsensor.o
 obj-$(CONFIG_SENSORS_HRM_MAX86915)	+= hrm_max86915.o
+obj-$(CONFIG_SENSORS_MAX86915)		+= max86915.o
 
 obj-$(CONFIG_SENSORS_SSP_BBD)           += ssp_bbd.o factory/mcu_bcm4774.o
 obj-$(CONFIG_SENSORS_SSP_BBD)           += bbdpl/

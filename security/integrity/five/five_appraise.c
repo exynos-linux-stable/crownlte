@@ -29,6 +29,7 @@
 #include "five_audit.h"
 #include "five_trace.h"
 #include "five_tee_api.h"
+#include "five_porting.h"
 
 #define FIVE_RSA_SIGNATURE_MAX_LENGTH (2048/8)
 
@@ -412,7 +413,7 @@ out:
 /*
  * five_update_xattr - update 'security.five' hash value
  */
-void five_update_xattr(struct task_struct *task,
+static int five_update_xattr(struct task_struct *task,
 		struct integrity_iint_cache *iint, struct file *file,
 		struct integrity_label *label)
 {
@@ -434,22 +435,39 @@ void five_update_xattr(struct task_struct *task,
 	dentry = file->f_path.dentry;
 
 	/* do not collect and update hash for digital signatures */
-	if (iint->five_status == FIVE_FILE_RSA)
-		return;
+	if (iint->five_status == FIVE_FILE_RSA) {
+		char dummy[512];
+
+		rc = vfs_getxattr(dentry, XATTR_NAME_FIVE, dummy,
+			sizeof(dummy));
+
+		// Check if xattr is exist
+		if (rc > 0 || rc != -ENODATA) {
+			return -EPERM;
+		} else {	// xattr does not exist.
+			iint->five_status = FIVE_FILE_UNKNOWN;
+			pr_err("FIVE: ERROR: Cache is unsynchronized");
+		}
+	}
 
 	rc = five_cert_body_alloc(&header, hash, sizeof(hash),
 				  label->data, label->len,
 				  &raw_cert, &raw_cert_len);
 	if (rc)
-		return;
+		return rc;
 
 	if (tint == INTEGRITY_PRELOAD_ALLOW_SIGN
 				|| tint == INTEGRITY_MIXED_ALLOW_SIGN
-				|| tint == INTEGRITY_DMVERITY_ALLOW_SIGN)
-		five_fix_xattr(task, dentry, file, (void **)&raw_cert, raw_cert_len,
-			       iint, label);
+				|| tint == INTEGRITY_DMVERITY_ALLOW_SIGN) {
+		rc = five_fix_xattr(task, dentry, file,
+				(void **)&raw_cert, raw_cert_len, iint, label);
+		if (rc)
+			pr_err("FIVE: Can't sign hash: rc=%d\n", rc);
+	}
 
 	five_cert_free(raw_cert);
+
+	return rc;
 }
 
 /**
@@ -552,6 +570,7 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 	struct integrity_iint_cache *iint;
 	struct inode *inode = file_inode(file);
 	struct integrity_label *l = NULL;
+	int rc = 0;
 	enum task_integrity_value tint =
 				    task_integrity_read(current->integrity);
 
@@ -614,7 +633,7 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 		}
 
 	inode_lock(inode);
-	five_update_xattr(current, iint, file, l);
+	rc = five_update_xattr(current, iint, file, l);
 	inode_unlock(inode);
 
 	if (label)
@@ -624,5 +643,5 @@ int five_fcntl_sign(struct file *file, struct integrity_label __user *label)
 				FIVE_TRACE_MEASUREMENT_OP_CALC,
 				FIVE_TRACE_MEASUREMENT_TYPE_HMAC);
 
-	return 0;
+	return rc;
 }

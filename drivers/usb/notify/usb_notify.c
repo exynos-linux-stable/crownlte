@@ -7,7 +7,7 @@
  * (at your option) any later version.
  */
 
- /* usb notify layer v3.1 */
+ /* usb notify layer v3.2 */
 
 #define pr_fmt(fmt) "usb_notify: " fmt
 
@@ -962,13 +962,13 @@ static void extra_notify_state(struct otg_notify *n,
 		pr_err("OTG overcurrent!!!!!!\n");
 		break;
 	case NOTIFY_EVENT_VBUSPOWER:
-		if (enable) {
+		 if (enable) {
 			u_notify->ndev.booster = NOTIFY_POWER_ON;
 			status = NOTIFY_EVENT_ENABLED;
-		} else {
+		 } else {
 			u_notify->ndev.booster = NOTIFY_POWER_OFF;
 			status = NOTIFY_EVENT_DISABLED;
-		}
+		 }
 #ifdef CONFIG_USB_NOTIFY_PROC_LOG
 		store_usblog_notify(NOTIFY_EVENT,
 			(void *)&event, (void *)&status);

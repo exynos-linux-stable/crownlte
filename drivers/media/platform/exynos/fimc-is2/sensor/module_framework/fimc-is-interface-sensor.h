@@ -308,6 +308,8 @@ struct fimc_is_cis_ops {
 	int (*cis_update_pdaf_tail_size)(struct v4l2_subdev *subdev, struct fimc_is_sensor_cfg *select);
 #endif
 	int (*cis_check_rev)(struct v4l2_subdev *subdev);
+	int (*cis_set_super_slow_motion_threshold)(struct v4l2_subdev *subdev, u32 threshold);
+	int (*cis_get_super_slow_motion_threshold)(struct v4l2_subdev *subdev, u32 *threshold);
 };
 
 struct fimc_is_sensor_ctl
@@ -507,6 +509,7 @@ struct fimc_is_ois_ops {
 	bool (*ois_auto_test_rear2)(struct fimc_is_core *core,
 	int threshold, bool *x_result, bool *y_result, int *sin_x, int *sin_y,
 	bool *x_result_2nd, bool *y_result_2nd, int *sin_x_2nd, int *sin_y_2nd);
+	int (*ois_set_power_mode)(struct v4l2_subdev *subdev);
 #endif
 	bool (*ois_check_fw)(struct fimc_is_core *core);
 	void (*ois_enable)(struct fimc_is_core *core);
@@ -520,6 +523,7 @@ struct fimc_is_ois_ops {
 	int (*ois_read_fw_ver)(char *name, char *ver);
 	int (*ois_center_shift)(struct v4l2_subdev *subdev);
 	int (*ois_set_center)(struct v4l2_subdev *subdev);
+	u8 (*ois_read_mode)(struct v4l2_subdev *subdev);
 };
 
 struct fimc_is_sensor_interface;

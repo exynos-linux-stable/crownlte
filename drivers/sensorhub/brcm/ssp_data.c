@@ -197,8 +197,13 @@ static void get_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
 #ifdef CONFIG_SENSORS_SSP_LIGHT_REPORT_LUX
+#ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 19);
+	*iDataIdx += 19;
+#else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 18);
 	*iDataIdx += 18;
+#endif
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
 	*iDataIdx += 10;
@@ -209,8 +214,13 @@ static void get_light_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 static void get_light_ir_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
+#ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 13);
+	*iDataIdx += 13;
+#else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 12);
 	*iDataIdx += 12;
+#endif
 }
 #endif
 
@@ -224,8 +234,13 @@ static void get_light_cct_sensordata(char *pchRcvDataFrame, int *iDataIdx,
 	struct sensor_value *sensorsdata)
 {
 #ifdef CONFIG_SENSORS_SSP_LIGHT_REPORT_LUX
+#ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 19);
+	*iDataIdx += 19;
+#else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 18);
 	*iDataIdx += 18;
+#endif
 #else
 	memcpy(sensorsdata, pchRcvDataFrame + *iDataIdx, 10);
 	*iDataIdx += 10;

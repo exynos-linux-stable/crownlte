@@ -60,6 +60,7 @@ struct aod_tune {
 	u32 nr_seqtbl;
 	struct maptbl *maptbl;
 	u32 nr_maptbl;
+	int self_mask_en;
 };
 
 struct clk_pos {

@@ -33,7 +33,7 @@
 #define DEBUG_POINT_FRAME_START		1
 #define DEBUG_POINT_FRAME_END		2
 #define DEBUG_POINT_FRAME_DMA_END	3
-#define DEBUG_POINT_MAX			4
+#define DEBUG_POINT_MAX			8 /* HACK: original value is 4 */
 
 #define SET_FILE_MAGIC_NUMBER		(0x12345679)
 #define FIMC_IS_MAX_SCENARIO		(64)
@@ -406,6 +406,7 @@ void fimc_is_hardware_clk_gate_dump(struct fimc_is_hardware *hardware);
 int fimc_is_hardware_runtime_resume(struct fimc_is_hardware *hardware);
 int fimc_is_hardware_runtime_suspend(struct fimc_is_hardware *hardware);
 void fimc_is_hardware_sfr_dump(struct fimc_is_hardware *hardware, u32 hw_id, bool flag_print_log);
+void print_hw_frame_count(struct fimc_is_hw_ip *hw_ip);
 void print_all_hw_frame_count(struct fimc_is_hardware *hardware);
 void fimc_is_hardware_clk_gate(struct fimc_is_hw_ip *hw_ip, u32 instance,
 	bool on, bool close);

@@ -17,6 +17,10 @@
 #include <scsi/scsi_eh.h>
 #include <scsi/scsi_dbg.h>
 
+#if defined(CONFIG_SEC_ABC)  
+#include <linux/sti/abc_common.h>  
+#endif   
+
 #define SCSI_LOG_SPOOLSIZE 4096
 
 #if (SCSI_LOG_SPOOLSIZE / SCSI_LOG_BUFSIZE) > BITS_PER_LONG
@@ -413,9 +417,12 @@ scsi_log_print_sense_hdr(const struct scsi_device *sdev, const char *name,
 	char *logbuf;
 	size_t off, logbuf_len;
 
-	if (sshdr && (sshdr->sense_key == 0x03))
+	if (sshdr && (sshdr->sense_key == 0x03)) {
 		sdev->host->medium_err_cnt++;
-	else if (sshdr && (sshdr->sense_key == 0x04))
+#if defined(CONFIG_SEC_ABC) 
+		sec_abc_send_event("MODULE=storage@ERROR=ufs_medium_err"); 
+#endif 
+	} else if (sshdr && (sshdr->sense_key == 0x04))
 		sdev->host->hw_err_cnt++;
 
 	logbuf = scsi_log_reserve_buffer(&logbuf_len);

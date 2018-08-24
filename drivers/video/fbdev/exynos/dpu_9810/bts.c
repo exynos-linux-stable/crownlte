@@ -100,6 +100,9 @@ static void dpu_bts_find_max_disp_freq(struct decon_device *decon,
 	u64 resol_clock;
 	u64 op_fps = LCD_REFRESH_RATE;
 	struct decon_win_config *config = regs->dpp_config;
+	struct bts_dpp_info dpp_info;
+
+	dpp_info = decon->bts.bts_info.dpp[IDMA_VGF1];
 
 	memset(disp_ch_bw, 0, sizeof(disp_ch_bw));
 
@@ -148,6 +151,11 @@ static void dpu_bts_find_max_disp_freq(struct decon_device *decon,
 
 	if (decon->bts.max_disp_freq < disp_op_freq)
 		decon->bts.max_disp_freq = disp_op_freq;
+
+	if (dpp_info.used && dpp_info.rotation)
+		if (((dpp_info.src_w * dpp_info.src_h) > FHD) &&
+				(decon->bts.max_disp_freq < 400 * KHZ))
+			decon->bts.max_disp_freq = 400 * KHZ;
 
 	DPU_DEBUG_BTS("\tMAX DISP CH FREQ = %d\n", decon->bts.max_disp_freq);
 }

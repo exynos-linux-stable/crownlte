@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2018 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -417,6 +417,7 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 			if ((gup_ret == -EFAULT) && !write) {
 				gup_ret = gup_local(mm, (uintptr_t)reader,
 						    pages_nr, 0, pages);
+				pr_err("coremm:%s:%d: ret %ld\n", __func__, __LINE__, gup_ret);
 			}
 			up_read(&mm->mmap_sem);
 			if (gup_ret < 0) {
@@ -428,10 +429,9 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 
 			/* check if we could lock all pages. */
 			if (gup_ret != pages_nr) {
-                /* ExySp */
-                mc_dev_err("failed to get user pages: @%p, gup_ret(%ld), pages_nr(%lu)",
-                    reader, gup_ret, pages_nr);
-
+				/* ExySp */
+				mc_dev_err("failed to get user pages: @%p, gup_ret(%ld), pages_nr(%lu)",
+					reader, gup_ret, pages_nr);
 				release_pages(pages, gup_ret, 0);
 				ret = -EINVAL;
 				goto end;

@@ -794,6 +794,10 @@ struct sec_ts_data {
 	u8	item_wet;
 #endif
 
+	int irq_gpio_status;
+	int irq_depth;
+	int irq_count;
+	
 #ifdef USE_PRESSURE_SENSOR
 	short pressure_left;
 	short pressure_center;
@@ -849,6 +853,7 @@ struct sec_ts_plat_data {
 	bool support_mt_pressure;
 	bool support_dex;
 	bool support_sidegesture;
+	int item_version;
 };
 
 typedef struct {

@@ -26,7 +26,7 @@
 #define SZ_96	0x00000060
 #define SZ_960	0x000003c0
 
-#define EXTRA_VERSION	"RA30"
+#define EXTRA_VERSION	"RE25"
 /******************************************************************************
  * sec_debug_extra_info details
  *
@@ -56,6 +56,7 @@ struct sec_debug_panic_extra_info sec_debug_extra_info_init = {
 		{"BUS",		"", SZ_128},
 		{"DPM",		"", SZ_32},
 		{"SMP",		"", SZ_8},
+		{"RSTCNT",	"", SZ_8},
 		{"ETC",		"", SZ_256},
 		{"ESR",		"", SZ_64},
 		{"MER",		"", SZ_16},
@@ -88,6 +89,8 @@ struct sec_debug_panic_extra_info sec_debug_extra_info_init = {
 		{"PINT2",	"", SZ_8},
 		{"PINT5",	"", SZ_8},
 		{"PINT6",	"", SZ_8},
+		{"PSTS1",	"", SZ_8},
+		{"PSTS2",	"", SZ_8},
 		{"RVD1",	"", SZ_256},
 		{"RVD2",	"", SZ_256},
 		{"RVD3",	"", SZ_256},
@@ -103,6 +106,18 @@ struct sec_debug_panic_extra_info sec_debug_extra_info_init = {
 		{"CPU5",	"", SZ_256},
 		{"CPU6",	"", SZ_256},
 		{"CPU7",	"", SZ_256},
+		{"FRQL0",	"", SZ_8},
+		{"FRQL1",	"", SZ_8},
+		{"FRQL2",	"", SZ_8},
+		{"FRQB0",	"", SZ_8},
+		{"FRQB1",	"", SZ_8},
+		{"FRQB2",	"", SZ_8},
+		{"FRQM0",	"", SZ_8},
+		{"FRQM1",	"", SZ_8},
+		{"FRQM2",	"", SZ_8},
+		{"FRQI0",	"", SZ_8},
+		{"FRQI1",	"", SZ_8},
+		{"FRQI2",	"", SZ_8},
 
 		/* core lockup information */
 		{"MID",		"", SZ_32},

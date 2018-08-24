@@ -32,7 +32,11 @@ _uh_disable:
 
 .global _start_uh
 _start_uh:
+#ifdef CONFIG_UH_RKP_8G
+.incbin "init/uh.8g.elf.h"
+#else
 .incbin "init/uh.elf.h"
+#endif
 .global _end_uh
 _end_uh:
 .section .text

@@ -583,12 +583,12 @@ void input_booster(struct input_dev *dev)
 				pr_booster("[Input Booster] KEY EVENT - %s\n", (input_events[i].value) ? "PRESS" : "RELEASE");
 				RUN_BOOSTER(key, (input_events[i].value) ? BOOSTER_ON : BOOSTER_OFF);
 				break;
-/*
+
 			case KEY_WINK:
 				pr_booster("[Input Booster] key_two KEY EVENT - %s\n", (input_events[i].value) ? "PRESS" : "RELEASE");
 				RUN_BOOSTER(key_two, (input_events[i].value) ? BOOSTER_ON : BOOSTER_OFF);
 				break;
-*/
+
 			default:
 				break;
 			}

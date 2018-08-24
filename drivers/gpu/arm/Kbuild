@@ -27,4 +27,10 @@ ifeq ($(CONFIG_MALI_THEX),y)
 	ifeq ($(CONFIG_MALI_THEX_R9P0),y)
 		obj-y += tHEx/r9p0/
 	endif
+	ifeq ($(CONFIG_MALI_THEX_R10P0),y)
+		obj-y += tHEx/r10p0/
+	endif
+	ifeq ($(CONFIG_MALI_THEX_R12P0),y)
+		obj-y += tHEx/r12p0/
+	endif
 endif

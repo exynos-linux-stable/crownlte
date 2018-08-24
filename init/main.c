@@ -543,12 +543,12 @@ static void __init mm_init(void)
 }
 
 #ifdef CONFIG_UH_RKP
-#ifdef CONFIG_UH_RKP_6G
+#ifdef CONFIG_UH_RKP_8G
+__attribute__((section(".rkp.bitmap"))) u8 rkp_pgt_bitmap_arr[0x40000] = {0};
+__attribute__((section(".rkp.dblmap"))) u8 rkp_map_bitmap_arr[0x40000] = {0};
+#else
 __attribute__((section(".rkp.bitmap"))) u8 rkp_pgt_bitmap_arr[0x30000] = {0};
 __attribute__((section(".rkp.dblmap"))) u8 rkp_map_bitmap_arr[0x30000] = {0};
-#else
-__attribute__((section(".rkp.bitmap"))) u8 rkp_pgt_bitmap_arr[0x20000] = {0};
-__attribute__((section(".rkp.dblmap"))) u8 rkp_map_bitmap_arr[0x20000] = {0};
 #endif
 u8 rkp_started; /* 0 initialized by c standard */
 
@@ -589,6 +589,14 @@ static void __init rkp_init(void)
 }
 #endif
 #ifdef CONFIG_RKP_KDP
+#define VERITY_PARAM_LENGTH 20
+static char verifiedbootstate[VERITY_PARAM_LENGTH];
+static int __init verifiedboot_state_setup(char *str)
+{
+	strlcpy(verifiedbootstate, str, sizeof(verifiedbootstate));
+	return 1;
+}
+__setup("androidboot.verifiedbootstate=", verifiedboot_state_setup);
 
 void kdp_init(void)
 {
@@ -617,6 +625,7 @@ void kdp_init(void)
 	cred.bp_cred_secptr 	= rkp_get_offset_bp_cred();
 
 	cred.task_threadinfo = offsetof(struct thread_info,task);
+	cred.verifiedbootstate = (u64)verifiedbootstate;
 	uh_call(UH_APP_RKP, 0x40, (u64)&cred, 0, 0, 0);
 }
 #endif /*CONFIG_RKP_KDP*/

@@ -240,7 +240,8 @@ static int abox_rdma_mailbox_send_cmd(struct device *dev, unsigned int cmd)
 	struct device *dev_abox = &platform_data->pdev_abox->dev;
 	struct abox_compr_data *data = &platform_data->compr_data;
 	ABOX_IPC_MSG ipc;
-	int ret, n, ack;
+	u64 timeout;
+	int ret;
 
 	dev_dbg(dev, "%s(%x)\n", __func__, cmd);
 
@@ -293,29 +294,26 @@ static int abox_rdma_mailbox_send_cmd(struct device *dev, unsigned int cmd)
 		return -EINVAL;
 	}
 
-	spin_lock(&data->cmd_lock);
+	mutex_lock(&data->cmd_lock);
 
 	abox_rdma_mailbox_write(dev, COMPR_HANDLE_ID, data->handle_id);
 	abox_rdma_mailbox_write(dev, COMPR_CMD_CODE, cmd);
-	ret = abox_request_ipc(dev_abox, IPC_OFFLOAD, &ipc, 0, 1, 1);
+	ret = abox_request_ipc(dev_abox, IPC_OFFLOAD, &ipc, 0, 0, 1);
 
-	for (n = 0, ack = 0; n < 2000; n++) {
-		/* Wait for ACK */
-		if (abox_rdma_mailbox_read(dev, COMPR_ACK)) {
-			ack = 1;
-			break;
+	timeout = local_clock() + (1 * NSEC_PER_SEC);
+	while (!abox_rdma_mailbox_read(dev, COMPR_ACK)) {
+		if (local_clock() <= timeout) {
+			cond_resched();
+			continue;
 		}
-		udelay(100);
+		dev_err(dev, "%s: No ack error!(%x)", __func__, cmd);
+		ret = -EFAULT;
+		break;
 	}
 	/* clear ACK */
 	abox_rdma_mailbox_write(dev, COMPR_ACK, 0);
 
-	spin_unlock(&data->cmd_lock);
-
-	if (!ack) {
-		dev_err(dev, "%s: No ack error!(%x)", __func__, cmd);
-		ret = -EFAULT;
-	}
+	mutex_unlock(&data->cmd_lock);
 
 	return ret;
 }
@@ -582,8 +580,7 @@ static int abox_rdma_compr_open(struct snd_compr_stream *stream)
 
 	pm_runtime_get_sync(dev);
 	abox_request_dram_on(platform_data->pdev_abox, dev, true);
-	abox_request_cpu_gear_dai(dev, abox_data, rtd->cpu_dai,
-			abox_data->cpu_gear_min);
+	abox_request_cpu_gear(dev, abox_data, dev, abox_data->cpu_gear_min);
 
 	return 0;
 }
@@ -648,8 +645,7 @@ static int abox_rdma_compr_free(struct snd_compr_stream *stream)
 #endif
 }
 #endif
-	abox_request_cpu_gear_dai(dev, abox_data, rtd->cpu_dai,
-			ABOX_CPU_GEAR_MIN);
+	abox_request_cpu_gear(dev, abox_data, dev, ABOX_CPU_GEAR_MIN);
 	abox_request_dram_on(platform_data->pdev_abox, dev, false);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put(dev);
@@ -1311,7 +1307,7 @@ static int abox_rdma_hw_params(struct snd_pcm_substream *substream,
 	struct abox_data *abox_data = data->abox_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	int id = data->id;
-	unsigned int lit, big, hmp;
+	unsigned int lit_freq, big_freq, hmp_boost;
 	int ret;
 	ABOX_IPC_MSG msg;
 	struct IPC_PCMTASK_MSG *pcmtask_msg = &msg.msg.pcmtask;
@@ -1355,15 +1351,15 @@ static int abox_rdma_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 
 	if (params_rate(params) > 48000)
-		abox_request_cpu_gear_dai(dev, abox_data, rtd->cpu_dai,
+		abox_request_cpu_gear(dev, abox_data, dev,
 				abox_data->cpu_gear_min - 1);
 
-	lit = data->pm_qos_lit[abox_get_rate_type(params_rate(params))];
-	big = data->pm_qos_big[abox_get_rate_type(params_rate(params))];
-	hmp = data->pm_qos_hmp[abox_get_rate_type(params_rate(params))];
-	abox_request_lit_freq_dai(dev, data->abox_data, rtd->cpu_dai, lit);
-	abox_request_big_freq_dai(dev, data->abox_data, rtd->cpu_dai, big);
-	abox_request_hmp_boost_dai(dev, data->abox_data, rtd->cpu_dai, hmp);
+	lit_freq = data->pm_qos_lit[abox_get_rate_type(params_rate(params))];
+	big_freq = data->pm_qos_big[abox_get_rate_type(params_rate(params))];
+	hmp_boost = data->pm_qos_hmp[abox_get_rate_type(params_rate(params))];
+	abox_request_lit_freq(dev, data->abox_data, dev, lit_freq);
+	abox_request_big_freq(dev, data->abox_data, dev, big_freq);
+	abox_request_hmp_boost(dev, data->abox_data, dev, hmp_boost);
 
 	dev_info(dev, "%s:DmaAddr=%pad Total=%zu PrdSz=%u(%u) #Prds=%u dma_area=%p rate=%u, width=%d, channels=%u\n",
 			snd_pcm_stream_str(substream), &runtime->dma_addr,
@@ -1399,9 +1395,9 @@ static int abox_rdma_hw_free(struct snd_pcm_substream *substream)
 			(dma_addr_t)IOVA_RDMA_BUFFER(id),
 			round_up(substream->runtime->dma_bytes, PAGE_SIZE));
 #endif
-	abox_request_lit_freq_dai(dev, data->abox_data, rtd->cpu_dai, 0);
-	abox_request_big_freq_dai(dev, data->abox_data, rtd->cpu_dai, 0);
-	abox_request_hmp_boost_dai(dev, data->abox_data, rtd->cpu_dai, 0);
+	abox_request_lit_freq(dev, data->abox_data, dev, 0);
+	abox_request_big_freq(dev, data->abox_data, dev, 0);
+	abox_request_hmp_boost(dev, data->abox_data, dev, 0);
 
 	switch (data->type) {
 	default:
@@ -1433,6 +1429,13 @@ static int abox_rdma_prepare(struct snd_pcm_substream *substream)
 	switch (data->type) {
 	case PLATFORM_CALL:
 		break;
+	case PLATFORM_NORMAL:
+	case PLATFORM_SYNC:
+		/* Clear preallocated DMA buffer */
+		if (substream->dma_buffer.area)
+			memset(substream->dma_buffer.area, 0,
+					substream->dma_buffer.bytes);
+		/* fall-through */
 	default:
 		ret = abox_try_to_asrc_off(dev, data->abox_data, rtd,
 			SNDRV_PCM_STREAM_PLAYBACK);
@@ -1561,9 +1564,10 @@ static int abox_rdma_open(struct snd_pcm_substream *substream)
 	dev_dbg(dev, "%s[%d]\n", __func__, id);
 
 	if (data->type == PLATFORM_CALL) {
-		if (abox_cpu_gear_idle(dev, abox_data, ABOX_CPU_GEAR_CALL_VSS))
+		if (abox_cpu_gear_idle(dev, abox_data,
+				(void *)ABOX_CPU_GEAR_CALL_VSS))
 			abox_request_cpu_gear_sync(dev, abox_data,
-					ABOX_CPU_GEAR_CALL_KERNEL,
+					(void *)ABOX_CPU_GEAR_CALL_KERNEL,
 					ABOX_CPU_GEAR_MAX);
 		ret = abox_request_l2c_sync(dev, data->abox_data, dev, true);
 		if (ret < 0)
@@ -1572,8 +1576,7 @@ static int abox_rdma_open(struct snd_pcm_substream *substream)
 		if (ret < 0)
 			dev_warn(dev, "call notify failed: %d\n", ret);
 	}
-	abox_request_cpu_gear_dai(dev, abox_data, rtd->cpu_dai,
-			abox_data->cpu_gear_min);
+	abox_request_cpu_gear(dev, abox_data, dev, abox_data->cpu_gear_min);
 
 	snd_soc_set_runtime_hwparams(substream, &abox_rdma_hardware);
 
@@ -1608,10 +1611,10 @@ static int abox_rdma_close(struct snd_pcm_substream *substream)
 	msg.task_id = pcmtask_msg->channel_id = id;
 	ret = abox_rdma_request_ipc(data, &msg, 0, 1);
 
-	abox_request_cpu_gear_dai(dev, abox_data, rtd->cpu_dai,
-			ABOX_CPU_GEAR_MIN);
+	abox_request_cpu_gear(dev, abox_data, dev, ABOX_CPU_GEAR_MIN);
 	if (data->type == PLATFORM_CALL) {
-		abox_request_cpu_gear(dev, abox_data, ABOX_CPU_GEAR_CALL_KERNEL,
+		abox_request_cpu_gear(dev, abox_data,
+				(void *)ABOX_CPU_GEAR_CALL_KERNEL,
 				ABOX_CPU_GEAR_MIN);
 		ret = abox_request_l2c(dev, data->abox_data, dev, false);
 		if (ret < 0)
@@ -1639,7 +1642,7 @@ static int abox_rdma_mmap(struct snd_pcm_substream *substream,
 	/* Increased cpu gear for sound camp.
 	 * Only sound camp uses mmap now.
 	 */
-	abox_request_cpu_gear_dai(dev, data->abox_data, rtd->cpu_dai,
+	abox_request_cpu_gear(dev, data->abox_data, dev,
 			data->abox_data->cpu_gear_min - 1);
 
 	return dma_mmap_writecombine(dev, vma,
@@ -1855,7 +1858,7 @@ static int samsung_abox_rdma_probe(struct platform_device *pdev)
 	data->abox_data = platform_get_drvdata(data->pdev_abox);
 
 	spin_lock_init(&data->compr_data.lock);
-	spin_lock_init(&data->compr_data.cmd_lock);
+	mutex_init(&data->compr_data.cmd_lock);
 	init_waitqueue_head(&data->compr_data.flush_wait);
 	init_waitqueue_head(&data->compr_data.exit_wait);
 	init_waitqueue_head(&data->compr_data.ipc_wait);

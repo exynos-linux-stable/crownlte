@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: linux_osl.c 737888 2017-12-23 13:20:41Z $
+ * $Id: linux_osl.c 752950 2018-03-19 18:28:06Z $
  */
 
 #define LINUX_PORT
@@ -193,12 +193,13 @@ static int16 linuxbcmerrormap[] =
 	-EINVAL,	/* BCME_DACBUF_RCCAL_FAIL */
 	-EINVAL,	/* BCME_VCOCAL_FAIL */
 	-EINVAL,	/* BCME_BANDLOCKED */
+	-EINVAL,	/* BCME_DNGL_DEVRESET */
 
 /* When an new error code is added to bcmutils.h, add os
  * specific error translation here as well
  */
 /* check if BCME_LAST changed since the last time this function was updated */
-#if BCME_LAST != -67
+#if BCME_LAST != -68
 #error "You need to add a OS error translation in the linuxbcmerrormap \
 	for new error code defined in bcmutils.h"
 #endif // endif

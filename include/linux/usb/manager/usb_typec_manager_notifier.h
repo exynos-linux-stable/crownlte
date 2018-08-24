@@ -156,6 +156,9 @@ typedef struct _manager_data_t
 	int dp_is_connect;
 	int dp_hs_connect;
 	int dp_check_done;
+
+	int dp_vid;
+	int dp_pid;
 }manager_data_t;
 
 

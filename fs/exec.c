@@ -68,8 +68,15 @@
 
 #include <trace/events/sched.h>
 
+#ifdef CONFIG_SECURITY_DEFEX
+#include <linux/defex.h>
+#endif
+
 #ifdef CONFIG_RKP_KDP
 #define rkp_is_nonroot(x) ((x->cred->type)>>1 & 1)
+#ifdef CONFIG_LOD_SEC
+#define rkp_is_lod(x) ((x->cred->type)>>3 & 1)
+#endif /*CONFIG_LOD_SEC*/
 #endif /*CONFIG_RKP_KDP*/
 
 int suid_dumpable = 0;
@@ -1697,8 +1704,8 @@ int search_binary_handler(struct linux_binprm *bprm)
 		if (printable(bprm->buf[0]) && printable(bprm->buf[1]) &&
 		    printable(bprm->buf[2]) && printable(bprm->buf[3]))
 			return retval;
-		if (request_module("binfmt-%04x",
-					*(ushort *)(bprm->buf + 2)) < 0) {
+		if (request_module(
+			      "binfmt-%04x", *(ushort *)(bprm->buf + 2)) < 0) {
 			task_integrity_delayed_reset(current);
 			return retval;
 		}
@@ -1779,6 +1786,20 @@ static int rkp_restrict_fork(struct filename *path)
 	if(!strcmp(path->name,"/system/bin/patchoat")){
 		return 0 ;
 	}
+        /* If the Process is from Linux on Dex, 
+        then no need to reduce privilege */
+#ifdef CONFIG_LOD_SEC
+	if(rkp_is_lod(current)){
+            return 0;
+        }
+#endif
+	/* If the Process is from Linux on Dex, 
+	then no need to reduce privilege */
+#ifdef CONFIG_LOD_SEC
+	if(rkp_is_lod(current)){
+		return 0;
+	}
+#endif
 	if(rkp_is_nonroot(current)){
 		shellcred = prepare_creds();
 		if (!shellcred) {
@@ -1937,6 +1958,14 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (IS_ERR(file))
 		goto out_unmark;
 
+#ifdef CONFIG_SECURITY_DEFEX
+	retval = task_defex_enforce(current, file, -__NR_execve);
+	if (retval < 0) {
+		bprm->file = file;
+		retval = -EPERM;
+		goto out_unmark;
+	 }
+#endif
 	sched_exec();
 
 	bprm->file = file;

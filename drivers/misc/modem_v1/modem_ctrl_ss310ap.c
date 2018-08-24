@@ -353,7 +353,10 @@ static int ss310ap_off(struct modem_ctl *mc)
 
 	mbox_set_interrupt(MCU_CP, mc->int_cp_wakeup);
 	msleep(5);
-#ifndef CONFIG_CP_PMUCAL
+#ifdef CONFIG_CP_PMUCAL
+	cal_cp_enable_dump_pc_no_pg();
+	cal_cp_reset_assert();
+#else
 	exynos_set_cp_power_onoff(CP_POWER_OFF);
 #endif
 
@@ -391,7 +394,10 @@ static int ss310ap_shutdown(struct modem_ctl *mc)
 exit:
 	mbox_set_interrupt(MCU_CP, mc->int_cp_wakeup);
 	msleep(5);
-#ifndef CONFIG_CP_PMUCAL
+#ifdef CONFIG_CP_PMUCAL
+	cal_cp_enable_dump_pc_no_pg();
+	cal_cp_reset_assert();
+#else
 	exynos_set_cp_power_onoff(CP_POWER_OFF);
 #endif
 	mif_err("---\n");
