@@ -37,9 +37,16 @@ config PANEL_AID_DIMMING
 	tristate "Support AID Dimming"
 	default y
 
+config PANEL_AID_DIMMING_DEBUG
+	depends on PANEL_AID_DIMMING
+	depends on !SAMSUNG_PRODUCT_SHIP
+	tristate "Support AID Dimming Debug"
+	default y
+
 config SUPPORT_DSU
 	tristate "Support DSU(Multi Resolution)"
 	depends on EXYNOS_DECON_LCD
+	depends on ANDROID_MAJOR_VERSION != "p"
 	default n
 
 config SUPPORT_HMD
@@ -78,9 +85,19 @@ config ACTIVE_CLOCK
 	tristate "Support DDI Active Clock Feature"
 	default n
 
-config SUPPORT_POC_FLASH
+config SUPPORT_DDI_FLASH
 	depends on EXYNOS_DECON_LCD
+	tristate "Support display ddi flash"
+	default n
+
+config SUPPORT_POC_FLASH
+	depends on EXYNOS_DECON_LCD && SUPPORT_DDI_FLASH
 	tristate "Support display poc flash"
+	default n
+
+config SUPPORT_DIM_FLASH
+	depends on EXYNOS_DECON_LCD && SUPPORT_DDI_FLASH
+	tristate "Support display dimming flash"
 	default n
 
 config SUPPORT_GRAM_CHECKSUM

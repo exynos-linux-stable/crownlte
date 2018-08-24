@@ -365,7 +365,7 @@ int exynos_ss_post_panic(void)
 #ifdef CONFIG_EXYNOS_SDM
 		if ((__raw_readl(exynos_ss_get_base_vaddr() +
 				ESS_OFFSET_SCRATCH) == ESS_SIGN_SCRATCH) &&
-			sec_debug_get_debug_level())
+			sec_debug_enter_upload())
 			exynos_sdm_dump_secure_region();
 #endif
 #ifdef CONFIG_EXYNOS_SNAPSHOT_PANIC_REBOOT

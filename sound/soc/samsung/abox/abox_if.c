@@ -35,7 +35,7 @@ static int abox_if_startup(struct snd_pcm_substream *substream,
 			(substream->stream == SNDRV_PCM_STREAM_CAPTURE) ?
 			'C' : 'P');
 
-	abox_request_cpu_gear_dai(dev, abox_data, dai, abox_data->cpu_gear_min);
+	abox_request_cpu_gear(dev, abox_data, dai, abox_data->cpu_gear_min);
 	ret = clk_enable(data->clk_bclk);
 	if (ret < 0) {
 		dev_err(dev, "Failed to enable bclk: %d\n", ret);
@@ -69,7 +69,7 @@ static void abox_if_shutdown(struct snd_pcm_substream *substream,
 
 	clk_disable(data->clk_bclk_gate);
 	clk_disable(data->clk_bclk);
-	abox_request_cpu_gear_dai(dev, abox_data, dai, ABOX_CPU_GEAR_MIN);
+	abox_request_cpu_gear(dev, abox_data, dai, ABOX_CPU_GEAR_MIN);
 }
 
 static int abox_if_hw_free(struct snd_pcm_substream *substream,
@@ -813,6 +813,16 @@ int abox_if_hw_params_fixup_by_dai(struct snd_soc_dai *dai,
 	rate = data->config[ABOX_IF_RATE];
 	channels = data->config[ABOX_IF_CHANNEL];
 	width = data->config[ABOX_IF_WIDTH];
+
+	/* don't break symmetric limitation */
+	if (dai->driver->symmetric_rates && dai->rate && dai->rate != rate)
+		rate = dai->rate;
+	if (dai->driver->symmetric_channels && dai->channels &&
+			dai->channels != channels)
+		channels = dai->channels;
+	if (dai->driver->symmetric_samplebits && dai->sample_width &&
+			dai->sample_width != width)
+		width = dai->sample_width;
 
 	if (rate)
 		hw_param_interval(params, SNDRV_PCM_HW_PARAM_RATE)->min = rate;

@@ -26,7 +26,7 @@ extern int hrm_info;
 #define MAX86915_CHIP_NAME	"MAX86915"
 
 #define VENDOR_VERISON		"1"
-#define VERSION			"38"
+#define VERSION			"39"
 
 #define MAX86915_I2C_RETRY_DELAY	10
 #define MAX86915_I2C_MAX_RETRIES	5
@@ -482,6 +482,7 @@ struct max869_device_data {
 	u8 default_current2;
 	u8 default_current3;
 	u8 default_current4;
+	u8 init_current[4];
 
 	u8 xtalk_code1;
 	u8 xtalk_code2;
@@ -707,7 +708,7 @@ static int __max86915_hrm_enable(struct max869_device_data *data)
 	data->flex_mode = 0xf;
 #endif
 
-	data->led_current1 = MAX86915_HRM_DEFAULT_CURRENT1;
+	data->led_current1 = data->init_current[AGC_IR];
 	data->led_current2 = MAX86915_HRM_DEFAULT_CURRENT2;
 #ifdef CONFIG_HRM_GREEN_BLUE
 	data->led_current3 = MAX86915_HRM_DEFAULT_CURRENT3;
@@ -1712,7 +1713,7 @@ static int __max869_cal_agc(int ir, int red, int green, int blue)
 			} else {
 				/* init */
 				max869_data->agc_current[led_num1]
-					= MAX86915_RED_INIT_CURRENT * MAX86915_CURRENT_PER_STEP;
+					= max869_data->init_current[led_num1] * MAX86915_CURRENT_PER_STEP;
 				max869_data->agc_enabled = 0;
 				max869_data->sample_cnt = 0;
 				max869_data->reached_thresh[led_num1] = 0;
@@ -1728,7 +1729,7 @@ static int __max869_cal_agc(int ir, int red, int green, int blue)
 			} else {
 				/* init */
 				max869_data->agc_current[led_num2]
-					= MAX86915_GREEN_INIT_CURRENT * MAX86915_CURRENT_PER_STEP;
+					= max869_data->init_current[led_num2] * MAX86915_CURRENT_PER_STEP;
 				max869_data->agc_enabled = 0;
 				max869_data->sample_cnt = 0;
 				max869_data->reached_thresh[led_num2] = 0;
@@ -1744,7 +1745,7 @@ static int __max869_cal_agc(int ir, int red, int green, int blue)
 			} else {
 				/* init */
 				max869_data->agc_current[led_num3]
-					= MAX86915_BLUE_INIT_CURRENT * MAX86915_CURRENT_PER_STEP;
+					= max869_data->init_current[led_num3] * MAX86915_CURRENT_PER_STEP;
 				max869_data->agc_enabled = 0;
 				max869_data->sample_cnt = 0;
 				max869_data->reached_thresh[led_num3] = 0;
@@ -1789,10 +1790,10 @@ static int __max869_cal_agc(int ir, int red, int green, int blue)
 			}
 #endif
 			if (max869_data->agc_current[led_num0]
-					!= MAX86915_IR_INIT_CURRENT * MAX86915_CURRENT_PER_STEP) {
+					!= max869_data->init_current[led_num0] * MAX86915_CURRENT_PER_STEP) {
 				/* init */
 				max869_data->agc_current[led_num0]
-					= MAX86915_IR_INIT_CURRENT * MAX86915_CURRENT_PER_STEP;
+					= max869_data->init_current[led_num0] * MAX86915_CURRENT_PER_STEP;
 				max869_data->agc_enabled = 0;
 				max869_data->sample_cnt = 0;
 				max869_data->reached_thresh[led_num0] = 0;
@@ -3855,10 +3856,10 @@ static int __max869_init_var(struct max869_device_data *data)
 	data->mode_sdk_enabled = 0;
 
 	if (buffer[1] == MAX86915_PART_ID) {
-		data->default_current1 = MAX86915_IR_INIT_CURRENT;
-		data->default_current2 = MAX86915_RED_INIT_CURRENT;
-		data->default_current3 = MAX86915_GREEN_INIT_CURRENT;
-		data->default_current4 = MAX86915_BLUE_INIT_CURRENT;
+		data->default_current1 = data->init_current[AGC_IR];
+		data->default_current2 = data->init_current[AGC_RED];
+		data->default_current3 = data->init_current[AGC_GREEN];
+		data->default_current4 = data->init_current[AGC_BLUE];
 		data->default_xtalk_code1 = MAX86915_DEFAULT_XTALK_CODE1;
 		data->default_xtalk_code2 = MAX86915_DEFAULT_XTALK_CODE2;
 		data->default_xtalk_code3 = MAX86915_DEFAULT_XTALK_CODE3;
@@ -3919,6 +3920,18 @@ int max869_init_device(struct i2c_client *client)
 		err = -EIO;
 		HRM_dbg("%s couldn't get hrm_data\n", __func__);
 		goto err_get_hrm_data;
+	}
+
+	if (hrm_data->init_current[AGC_IR] != 0) {
+		max869_data->init_current[AGC_IR] = hrm_data->init_current[AGC_IR];
+		max869_data->init_current[AGC_RED] = hrm_data->init_current[AGC_RED];
+		max869_data->init_current[AGC_GREEN] = hrm_data->init_current[AGC_GREEN];
+		max869_data->init_current[AGC_BLUE] = hrm_data->init_current[AGC_BLUE];
+	} else {
+		max869_data->init_current[AGC_IR] = MAX86915_IR_INIT_CURRENT;
+		max869_data->init_current[AGC_RED] = MAX86915_RED_INIT_CURRENT;
+		max869_data->init_current[AGC_GREEN] = MAX86915_GREEN_INIT_CURRENT;
+		max869_data->init_current[AGC_BLUE] = MAX86915_BLUE_INIT_CURRENT;
 	}
 
 	err = __max869_init_var(max869_data);
@@ -4224,19 +4237,19 @@ int max869_set_xtalk(u8 d1, u8 d2, u8 d3, u8 d4)
 			max869_data->xtalk_code3, max869_data->xtalk_code4);
 
 	if (max869_data->led_current1 == MAX86915_MIN_CURRENT)
-		max869_data->default_current1 = MAX86915_IR_INIT_CURRENT
+		max869_data->default_current1 = max869_data->init_current[AGC_IR]
 					+ MAX86915_IR_CURRENT_STEP * max869_data->xtalk_code1;
 
 	if (max869_data->led_current2 == MAX86915_MIN_CURRENT)
-		max869_data->default_current2 = MAX86915_RED_INIT_CURRENT
+		max869_data->default_current2 = max869_data->init_current[AGC_RED]
 					+ MAX86915_RED_CURRENT_STEP * max869_data->xtalk_code2;
 
 	if (max869_data->led_current3 == MAX86915_MIN_CURRENT)
-		max869_data->default_current3 = MAX86915_GREEN_INIT_CURRENT
+		max869_data->default_current3 = max869_data->init_current[AGC_GREEN]
 					+ MAX86915_GREEN_CURRENT_STEP * max869_data->xtalk_code3;
 
 	if (max869_data->led_current4 == MAX86915_MIN_CURRENT)
-		max869_data->default_current4 = MAX86915_BLUE_INIT_CURRENT
+		max869_data->default_current4 = max869_data->init_current[AGC_BLUE]
 					+ MAX86915_BLUE_CURRENT_STEP * max869_data->xtalk_code4;
 
 	HRM_info("%s - current 0x%x 0x%x 0x%x 0x%x\n", __func__,

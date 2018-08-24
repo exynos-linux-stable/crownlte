@@ -316,8 +316,13 @@ enum {
 #ifdef CONFIG_SENSORS_SSP_PROX_AUTOCAL_AMS
 #define DEFAULT_HIGH_THRESHOLD				2400
 #define DEFAULT_LOW_THRESHOLD				1600
+#ifdef CONFIG_SENSORS_SSP_CROWN
+#define DEFAULT_DETECT_HIGH_THRESHOLD		16360
+#define DEFAULT_DETECT_LOW_THRESHOLD		1500
+#else
 #define DEFAULT_DETECT_HIGH_THRESHOLD		16368
 #define DEFAULT_DETECT_LOW_THRESHOLD		1000
+#endif
 #else
 #define DEFAULT_HIGH_THRESHOLD			2000
 #define DEFAULT_LOW_THRESHOLD			1400
@@ -465,8 +470,13 @@ struct sensor_value {
 			u16 g;
 			u16 b;
 			u16 w;
+#ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+			u16 a_gain;
+			u8 a_time;
+#else
 			u8 a_time;
 			u8 a_gain;
+#endif
 		};
 #ifdef CONFIG_SENSORS_SSP_IRDATA_FOR_CAMERA
 		struct {
@@ -475,8 +485,13 @@ struct sensor_value {
 			u16 ir_g;
 			u16 ir_b;
 			u16 ir_w;
+#ifdef CONFIG_SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+			u16 ir_a_gain;
+			u8 ir_a_time;
+#else
 			u8 ir_a_time;
 			u8 ir_a_gain;
+#endif
 		};
 #endif
 		struct {
@@ -895,8 +910,8 @@ struct ssp_data {
 
 /* information of sensorhub for big data */
 	bool IsGpsWorking;
-	char resetInfo[1024];
-        char resetInfoDebug[1024];
+	char resetInfo[2048];
+        char resetInfoDebug[512];
         u64 resetInfoDebugTime;
 	u32 resetCntGPSisOn;
 /* thermistor (up & sub) table information*/

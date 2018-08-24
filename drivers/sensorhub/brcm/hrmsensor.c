@@ -95,7 +95,7 @@ static struct hrm_func max869_func = {
 #define DEFAULT_THRESHOLD -4194303
 #define SLAVE_ADDR_MAX 0x57
 
-#define VERSION				"30"
+#define VERSION				"33"
 
 int hrm_debug = 1;
 int hrm_info;
@@ -158,6 +158,7 @@ static void hrm_init_device_data(struct hrm_device_data *data)
 	data->regulator_state = 0;
 	data->irq_state = 0;
 	data->hrm_threshold = DEFAULT_THRESHOLD;
+	data->prox_threshold = 0;
 	data->eol_test_is_enable = 0;
 	data->eol_test_status = 0;
 	data->pre_eol_test_is_enable = 0;
@@ -442,8 +443,6 @@ static int hrm_enable(struct hrm_device_data *data, enum hrm_mode mode)
 		return err;
 	}
 
-	hrm_irq_set_state(data, HRM_ON);
-
 	return 0;
 }
 
@@ -452,8 +451,6 @@ static int hrm_disable(struct hrm_device_data *data, enum hrm_mode mode)
 	int err;
 
 	HRM_dbg("%s\n", __func__);
-
-	hrm_irq_set_state(data, HRM_OFF);
 
 	if (data->h_func == NULL) {
 		HRM_dbg("%s - not mapped function\n", __func__);
@@ -557,6 +554,8 @@ void hrm_mode_enable(struct hrm_device_data *data,
 	int err;
 
 	if (onoff == HRM_ON) {
+		hrm_irq_set_state(data, HRM_ON);
+
 		err = hrm_power_ctrl(data, HRM_ON);
 		if (err < 0)
 			HRM_dbg("%s hrm_regulator_on fail err = %d\n",
@@ -590,6 +589,7 @@ void hrm_mode_enable(struct hrm_device_data *data,
 		if (err < 0)
 			HRM_dbg("%s hrm_regulator_off fail err = %d\n",
 				__func__, err);
+		hrm_irq_set_state(data, HRM_OFF);
 	}
 	HRM_dbg("%s - onoff = %d m : %d c : %d\n",
 		__func__, onoff, mode, data->hrm_enabled_mode);
@@ -1016,6 +1016,41 @@ static ssize_t hrm_threshold_show(struct device *dev,
 		return snprintf(buf, PAGE_SIZE, "%d\n", data->hrm_threshold);
 	} else {
 		HRM_info("%s - threshold = 0\n", __func__);
+		return snprintf(buf, PAGE_SIZE, "%d\n", 0);
+	}
+}
+
+static ssize_t prox_thd_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct hrm_device_data *data = dev_get_drvdata(dev);
+	int err = 0;
+
+	mutex_lock(&data->activelock);
+	err = kstrtoint(buf, 10, &data->prox_threshold);
+	if (err < 0) {
+		HRM_dbg("%s - kstrtoint failed.(%d)\n", __func__, err);
+		mutex_unlock(&data->activelock);
+		return err;
+	}
+	HRM_info("%s - prox threshold = %d\n",
+		__func__, data->prox_threshold);
+
+	mutex_unlock(&data->activelock);
+	return size;
+}
+
+static ssize_t prox_thd_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct hrm_device_data *data = dev_get_drvdata(dev);
+
+	if (data->prox_threshold) {
+		HRM_info("%s - prox threshold = %d\n",
+			__func__, data->prox_threshold);
+		return snprintf(buf, PAGE_SIZE, "%d\n", data->prox_threshold);
+	} else {
+		HRM_info("%s - prox threshold = 0\n", __func__);
 		return snprintf(buf, PAGE_SIZE, "%d\n", 0);
 	}
 }
@@ -1541,6 +1576,8 @@ static DEVICE_ATTR(lib_ver, S_IRUGO | S_IWUSR | S_IWGRP,
 	hrm_lib_ver_show, hrm_lib_ver_store);
 static DEVICE_ATTR(threshold, S_IRUGO | S_IWUSR | S_IWGRP,
 	hrm_threshold_show, hrm_threshold_store);
+static DEVICE_ATTR(prox_thd, S_IRUGO | S_IWUSR | S_IWGRP,
+	prox_thd_show, prox_thd_store);
 static DEVICE_ATTR(eol_test, S_IRUGO | S_IWUSR | S_IWGRP,
 	hrm_eol_test_show, hrm_eol_test_store);
 static DEVICE_ATTR(eol_test_result, S_IRUGO, hrm_eol_test_result_show, NULL);
@@ -1572,6 +1609,7 @@ static struct device_attribute *hrm_sensor_attrs[] = {
 	&dev_attr_int_pin_check,
 	&dev_attr_lib_ver,
 	&dev_attr_threshold,
+	&dev_attr_prox_thd,
 	&dev_attr_eol_test,
 	&dev_attr_eol_test_result,
 	&dev_attr_eol_test_status,
@@ -1639,21 +1677,21 @@ irqreturn_t hrm_irq_handler(int hrm_irq, void *device)
 
 	memset(&read_data, 0, sizeof(struct hrm_output_data));
 
-	if (data->regulator_state == 0)
+	if (data->regulator_state == 0 || data->hrm_enabled_mode == 0) {
+		HRM_dbg("%s - return IRQ_HANDLED (reg_state : %d, hrm_mode : %d)\n",
+				__func__, data->regulator_state, data->hrm_enabled_mode);
 		return IRQ_HANDLED;
+	}
 
 #ifdef CONFIG_ARCH_QCOM
 	pm_qos_add_request(&data->pm_qos_req_fpm, PM_QOS_CPU_DMA_LATENCY,
 		PM_QOS_DEFAULT_VALUE);
 #endif
-
 	err = hrm_read_data(data, &read_data);
 
 	if (err == 0) {
 		if (data->hrm_input_dev == NULL) {
 			HRM_dbg("%s - hrm_input_dev is NULL\n", __func__);
-		} else if (data->hrm_enabled_mode == 0) {
-			HRM_dbg("%s - hrm_enabled_mode %d\n", __func__, data->hrm_enabled_mode);
 		} else {
 			if (read_data.fifo_num) {
 				for (i = 0; i < read_data.fifo_num; i++) {
@@ -1708,6 +1746,7 @@ static int hrm_parse_dt(struct hrm_device_data *data)
 	struct device *dev = &data->hrm_i2c_client->dev;
 	struct device_node *dNode = dev->of_node;
 	enum of_gpio_flags flags;
+	u32 threshold[2];
 
 	if (dNode == NULL)
 		return -ENODEV;
@@ -1785,6 +1824,30 @@ static int hrm_parse_dt(struct hrm_device_data *data)
 		data->pins_idle = NULL;
 		return -EINVAL;
 	}
+
+	if (of_property_read_u32_array(dNode, "hrmsensor,thd",
+		threshold, ARRAY_SIZE(threshold)) < 0) {
+		HRM_dbg("%s - no threshold in dt\n", __func__);
+	} else {
+		data->hrm_threshold = threshold[0];
+		data->prox_threshold = threshold[1];
+	}	
+
+	HRM_dbg("%s - threshold = %d %d\n", __func__, data->hrm_threshold, data->prox_threshold);	
+
+	if (of_property_read_u32_array(dNode, "hrmsensor,init_curr",
+		data->init_current, ARRAY_SIZE(data->init_current)) < 0) {
+		HRM_dbg("%s - no init_curr in dt\n", __func__);
+
+		data->init_current[0] = 0;
+		data->init_current[1] = 0;
+		data->init_current[2] = 0;
+		data->init_current[3] = 0;
+	}
+
+	HRM_dbg("%s - init_curr = 0x%.2x 0x%.2x 0x%.2x 0x%.2x \n", __func__,
+		data->init_current[0], data->init_current[1],
+		data->init_current[2], data->init_current[3]);
 
 	return 0;
 }

@@ -32,7 +32,7 @@ struct s2dos05_dev {
 	int type;
 	u8 rev_num; /* pmic Rev */
 	bool wakeup;
-	int dp_irq;
+	int dp_pmic_irq;
 	int		adc_mode;
 	int		adc_sync_mode;
 	u8 adc_en_val;
@@ -51,7 +51,7 @@ struct s2dos05_platform_data {
 	int num_regulators;
 	struct	s2dos05_regulator_data *regulators;
 	int	device_type;
-	int dp_irq;
+	int dp_pmic_irq;
 
 	/* adc_mode
 	 * 0 : not use

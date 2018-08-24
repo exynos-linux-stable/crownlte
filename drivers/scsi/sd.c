@@ -3299,7 +3299,7 @@ static int sd_probe(struct device *dev)
 		/* apply more throttle on non-ufs scsi device */
 		q->backing_dev_info.capabilities |= BDI_CAP_STRICTLIMIT;
 		bdi_set_min_ratio(&q->backing_dev_info, 20);
-		bdi_set_max_ratio(&q->backing_dev_info, 20);
+		bdi_set_max_ratio(&q->backing_dev_info, 60);
 #endif
 		pr_info("Parameters for SCSI-dev(%s): min/max_ratio: %u/%u "
 			"strictlimit: on nr_requests: %lu read_ahead_kb: %lu\n",
@@ -3379,6 +3379,17 @@ static int sd_remove(struct device *dev)
 {
 	struct scsi_disk *sdkp;
 	dev_t devt;
+
+#ifdef CONFIG_LARGE_DIRTY_BUFFER
+	struct scsi_device *sdp;
+
+	/* restore bdi min/max ratio before device removal */
+	sdp = to_scsi_device(dev);
+	if (sdp && sdp->request_queue && &sdp->request_queue->backing_dev_info) {
+		bdi_set_min_ratio(&sdp->request_queue->backing_dev_info, 0);
+		bdi_set_max_ratio(&sdp->request_queue->backing_dev_info, 100);
+	}
+#endif
 
 	sdkp = dev_get_drvdata(dev);
 	devt = disk_devt(sdkp->disk);

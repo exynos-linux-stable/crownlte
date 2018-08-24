@@ -885,7 +885,7 @@ static DEVICE_ATTR(data_injection_enable, 0664,
 static DEVICE_ATTR(ssp_control, 0220, NULL, set_ssp_control);
 static DEVICE_ATTR(sensor_dump, 0664,
 	sensor_dump_show, sensor_dump_store);
-static DEVICE_ATTR(reset_info, 0440, reset_info_show, NULL);
+static DEVICE_ATTR(bcm_minidump, 0440, reset_info_show, NULL);
 
 static DEVICE_ATTR(sensor_state, 0444, show_sensor_state, NULL);
 static DEVICE_ATTR(mcu_power, 0664, show_mcu_power, set_mcu_power);
@@ -911,7 +911,7 @@ static struct device_attribute *mcu_attrs[] = {
 #endif
 	&dev_attr_thermistor_channel_0,
 	&dev_attr_thermistor_channel_1,
-	&dev_attr_reset_info,
+	&dev_attr_bcm_minidump,
 	NULL,
 };
 

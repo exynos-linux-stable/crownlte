@@ -2266,6 +2266,8 @@ repeat:
 			}
 			goto next;
 		}
+		if (is_migrate_rbin_page(page))
+			goto next;
 
 		head = compound_head(page);
 		if (!page_cache_get_speculative(head))
@@ -2709,6 +2711,15 @@ struct page *grab_cache_page_write_begin(struct address_space *mapping,
 }
 EXPORT_SYMBOL(grab_cache_page_write_begin);
 
+static bool block_device_ejected(struct inode *inode)
+{
+	struct backing_dev_info *bdi = inode_to_bdi(inode);
+
+	if (unlikely(bdi_cap_account_writeback(bdi) && !bdi->dev))
+		return true;
+	return false;
+}
+
 ssize_t generic_perform_write(struct file *file,
 				struct iov_iter *i, loff_t pos)
 {
@@ -2753,6 +2764,12 @@ again:
 
 		if (fatal_signal_pending(current)) {
 			status = -EINTR;
+			break;
+		}
+
+		/* Check whether a device has been ejected or not */
+		if (unlikely(block_device_ejected(mapping->host))) {
+			status = -EIO;
 			break;
 		}
 

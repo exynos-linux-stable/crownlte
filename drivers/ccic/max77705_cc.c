@@ -109,7 +109,7 @@ void max77705_ccic_event_work(void *data, int dest, int id, int attach, int even
 			(usbpd_data->data_role != USB_STATUS_NOTIFY_DETACH)) {
 			/* Role change try and new mode detected */
 			msg_maxim("usb: reverse_completion");
-			usbpd_data->try_state_change = 0;
+			usbpd_data->try_state_change = TYPE_C_DETACH;
 			complete(&usbpd_data->reverse_completion);
 		}
 	} else if (id == CCIC_NOTIFY_ID_ROLE_SWAP) {
@@ -501,7 +501,6 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 #if defined(CONFIG_USB_HOST_NOTIFY)
 			send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 0);
 #endif
-			usbc_data->send_vdm_identity = 0;
 			max77705_detach_pd(usbc_data);
 			usbc_data->pd_pr_swap = cc_No_Connection;
 			max77705_vbus_turn_on_ctrl(usbc_data, OFF, false);
@@ -517,6 +516,12 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 			if (usbc_data->dual_role != NULL &&
 				usbc_data->data_role != USB_STATUS_NOTIFY_DETACH)
 				dual_role_instance_changed(usbc_data->dual_role);
+			if (usbc_data->try_state_change) {
+				/* Role change try and new mode detected */
+				msg_maxim("usb: reverse_completion");
+				usbc_data->try_state_change = TYPE_C_DETACH;
+				complete(&usbc_data->reverse_completion);
+			}
 #endif
 #if defined(CONFIG_USB_HOST_NOTIFY)
 			send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 0);
@@ -548,6 +553,12 @@ static void max77705_ccstat_irq_handler(void *data, int irq)
 			if (usbc_data->dual_role != NULL &&
 				usbc_data->data_role != USB_STATUS_NOTIFY_DETACH)
 				dual_role_instance_changed(usbc_data->dual_role);
+			if (usbc_data->try_state_change) {
+				/* Role change try and new mode detected */
+				msg_maxim("usb: reverse_completion");
+				usbc_data->try_state_change = TYPE_C_DETACH;
+				complete(&usbc_data->reverse_completion);
+			}
 #endif
 #if defined(CONFIG_USB_HOST_NOTIFY)
 			send_otg_notify(o_notify, NOTIFY_EVENT_POWER_SOURCE, 1);

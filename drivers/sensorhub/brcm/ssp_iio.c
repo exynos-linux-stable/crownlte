@@ -98,14 +98,22 @@ err_config_ring_buffer:
 static int ssp_push_iio_buffer(struct iio_dev *indio_dev, u64 timestamp, u8 *data, int data_len)
 {
 	u8 buf[data_len + sizeof(timestamp)];
-	int iRet = 0;
+	int iRet = 0, retry = 3;
 
 	memcpy(buf, data, data_len);
 	memcpy(&buf[data_len], &timestamp, sizeof(timestamp));
 
 	mutex_lock(&indio_dev->mlock);
 
-	iRet = iio_push_to_buffers(indio_dev, buf);
+	do {
+		if(retry != 3)
+			usleep_range(150, 151);
+
+		iRet = iio_push_to_buffers(indio_dev, buf);
+	} while(iRet < 0 && retry-- > 0);
+
+	if(retry == 0 && iRet < 0)
+		pr_err("[SSP] %s - %s push fail erro %d", __func__, indio_dev->name, iRet);
 
 	mutex_unlock(&indio_dev->mlock);
 

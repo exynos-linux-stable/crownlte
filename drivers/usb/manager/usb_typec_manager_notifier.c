@@ -25,6 +25,9 @@
 #include <linux/ccic/max77705_usbc.h>
 #include <linux/ccic/max77705_alternate.h>
 
+/* dwc3 irq storm patch */
+/* need to check dwc3 link state during dcd time out case */
+extern int dwc3_gadget_get_cmply_link_state_wrapper(void);
 #define DEBUG
 #define SET_MANAGER_NOTIFIER_BLOCK(nb, fn, dev) do {	\
 		(nb)->notifier_call = (fn);		\
@@ -72,6 +75,8 @@ static int manager_notifier_notify(void *data)
 	if (manager_noti.dest == CCIC_NOTIFY_DEV_DP) {
 		if (manager_noti.id == CCIC_NOTIFY_ID_DP_CONNECT) {
 			typec_manager.dp_attach_state = manager_noti.sub1;
+			typec_manager.dp_vid = manager_noti.sub2;
+			typec_manager.dp_pid = manager_noti.sub3;
 			typec_manager.dp_is_connect = 0;
 			typec_manager.dp_hs_connect = 0;
 		} else if (manager_noti.id == CCIC_NOTIFY_ID_DP_HPD) {
@@ -194,16 +199,21 @@ int get_usb310_count(void)
 }
 EXPORT_SYMBOL(get_usb310_count);
 
-int get_waterChg_count(void)
+int get_waterchg_count(int is_lpm)
 {
-	unsigned int ret;
-	ret = typec_manager.waterChg_count;
-	typec_manager.waterChg_count = 0;
-	return ret;
-}
-EXPORT_SYMBOL(get_waterChg_count);
+    unsigned int ret = 0, islpcharge = 0;
 
-unsigned long get_waterDet_duration(void)
+    islpcharge = lpcharge?1:0;
+    if (is_lpm != islpcharge)
+        return 0;
+    
+    ret = typec_manager.waterChg_count;
+    typec_manager.waterChg_count = 0;
+    return ret;
+}
+EXPORT_SYMBOL(get_waterchg_count);
+
+unsigned long get_waterdet_duration(void)
 {
 	unsigned long ret;
 	struct timeval time;
@@ -219,12 +229,16 @@ unsigned long get_waterDet_duration(void)
 	typec_manager.waterDet_duration -= ret*60;
 	return ret;
 }
-EXPORT_SYMBOL(get_waterDet_duration);
+EXPORT_SYMBOL(get_waterdet_duration);
 
-unsigned long get_wVbus_duration(void)
+unsigned long get_wvbus_duration(int is_lpm)
 {
-	unsigned long ret;
+	unsigned long ret = 0, islpcharge = 0;
 	struct timeval time;
+
+	islpcharge = lpcharge?1:0;
+	if (is_lpm != islpcharge)
+	    return 0;
 
 	if (typec_manager.wVbus_det) {
 		do_gettimeofday(&time);	/* time.tv_sec */
@@ -237,7 +251,7 @@ unsigned long get_wVbus_duration(void)
 	typec_manager.wVbus_duration = 0;
 	return ret;
 }
-EXPORT_SYMBOL(get_wVbus_duration);
+EXPORT_SYMBOL(get_wvbus_duration);
 
 void set_usb_enable_state(void)
 {
@@ -287,14 +301,16 @@ static void cable_type_check(struct work_struct *work)
 {
 	CC_NOTI_USB_STATUS_TYPEDEF p_usb_noti;
 	CC_NOTI_ATTACH_TYPEDEF p_batt_noti;
+	int dwc3_link_check = 0;
 
+	dwc3_link_check= dwc3_gadget_get_cmply_link_state_wrapper();
 	if ( (typec_manager.ccic_drp_state != USB_STATUS_NOTIFY_ATTACH_UFP) ||
-		typec_manager.is_UFPS ){
-		pr_info("usb: [M] %s: skip case\n", __func__);
+		typec_manager.is_UFPS || dwc3_link_check == 1 ){
+		pr_info("usb: [M] %s: skip case : dwc3_link = %d\n", __func__, dwc3_link_check);
 		return;
 	}
+	pr_info("usb: [M] %s: usb=%d, pd=%d cable_type=%d, dwc3_link_check=%d\n", __func__, typec_manager.usb_enum_state, typec_manager.pd_con_state, typec_manager.cable_type, dwc3_link_check);
 
-	pr_info("usb: [M] %s: usb=%d, pd=%d cable_type=%d\n", __func__, typec_manager.usb_enum_state, typec_manager.pd_con_state, typec_manager.cable_type);
 	if(!typec_manager.usb_enum_state ||
 		(typec_manager.muic_data_refresh
 		&& typec_manager.cable_type==MANAGER_NOTIFY_MUIC_CHARGER)) {
@@ -915,6 +931,10 @@ int manager_notifier_register(struct notifier_block *nb, notifier_fn_t notifier,
 		if (typec_manager.dp_attach_state == CCIC_NOTIFY_ATTACH) {
 			m_noti.id = CCIC_NOTIFY_ID_DP_CONNECT;
 			m_noti.sub1 = typec_manager.dp_attach_state;
+			m_noti.sub2 = typec_manager.dp_vid;
+			m_noti.sub3 = typec_manager.dp_pid;
+			pr_info("usb: [M] %s DP_CONNECT sub1 %d, 0x%x 0x%x\n", __func__,
+					m_noti.sub1, m_noti.sub2, m_noti.sub3);
 			nb->notifier_call(nb, m_noti.id, &(m_noti));
 
 			m_noti.id = CCIC_NOTIFY_ID_DP_LINK_CONF;

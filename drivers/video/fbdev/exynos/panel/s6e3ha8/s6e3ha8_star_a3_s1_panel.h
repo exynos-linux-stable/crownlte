@@ -2237,11 +2237,6 @@ static void *star_a3_s1_gct_exit_cmdtbl[] = {
 	&DLYINFO(star_a3_s1_wait_vddm_update),
 	&KEYINFO(star_a3_s1_level3_key_disable),
 	&KEYINFO(star_a3_s1_level2_key_disable),
-	&KEYINFO(star_a3_s1_level1_key_enable),
-	&PKTINFO(star_a3_s1_sw_reset),
-	&KEYINFO(star_a3_s1_level1_key_disable),
-	&DLYINFO(star_a3_s1_wait_120msec),
-	&SEQINFO(star_a3_s1_seqtbl[PANEL_INIT_SEQ]),
 };
 #endif
 
@@ -2292,6 +2287,108 @@ static void *star_a3_s1_active_clk_update_cmdtbl[] = {
 static void *star_a3_s1_tdmb_tune_cmdtbl[] = {
 	&KEYINFO(star_a3_s1_level2_key_enable),
 	&PKTINFO(star_a3_s1_tdmb_tune),
+	&KEYINFO(star_a3_s1_level2_key_disable),
+};
+#endif
+
+
+#ifdef CONFIG_SUPPORT_ISC_DEFECT
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_01[] = {
+	0xF5, 0x80
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_01, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_01, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_02[] = {
+	0xB7, 0x40
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_02, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_02, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_03[] = {
+	0xB0, 0x02
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_03, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_03, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_04[] = {
+	0xC2, 0xFF, 0xFF
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_04, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_04, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_05[] = {
+	0xB8, 0x20
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_05, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_05, 0);
+
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_06[] = {
+	0xEB, 0x56, 0x37
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_06, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_06, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_07[] = {
+	0xB0, 0x37
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_07, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_07, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_08[] = {
+	0xEB, 0xE4
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_08, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_08, 0);
+
+static u8 STAR_A3_S1_ISC_IPOFF_SEQ_09[] = {
+	0xDD, 0x00
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ipoff_seq_09, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_IPOFF_SEQ_09, 0);
+
+
+static u8 STAR_A3_S1_ISC_VDDM_SEQ_01[] = {
+	0xB0, 0x09
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_vddm_seq_01, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_VDDM_SEQ_01, 0);
+
+static u8 STAR_A3_S1_ISC_VDDM_SEQ_02[] = {
+	0xF4, 0x10
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_vddm_seq_02, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_VDDM_SEQ_02, 0);
+
+static u8 STAR_A3_S1_ISC_VDDM_SEQ_03[] = {
+	0xFE, 0xB0
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_vddm_seq_03, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_VDDM_SEQ_03, 0);
+
+static u8 STAR_A3_S1_ISC_VDDM_SEQ_04[] = {
+	0xFE, 0x30
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_vddm_seq_04, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_VDDM_SEQ_04, 0);
+
+static u8 STAR_A3_S1_ISC_ISON_SEQ_01[] = {
+	0xB0, 0x03
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ison_seq_01, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_ISON_SEQ_01, 0);
+
+static u8 STAR_A3_S1_ISC_ISON_SEQ_02[] = {
+	0xF6, 0x43
+};
+static DEFINE_STATIC_PACKET(star_a3_s1_isc_ison_seq_02, DSI_PKT_TYPE_WR, STAR_A3_S1_ISC_ISON_SEQ_02, 0);
+
+static void *star_a3_s1_isc_defect_cmdtbl[] = {
+	&KEYINFO(star_a3_s1_level2_key_enable),
+	&KEYINFO(star_a3_s1_level3_key_enable),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_01),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_02),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_03),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_04),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_05),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_06),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_07),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_08),
+	&PKTINFO(star_a3_s1_isc_ipoff_seq_09),
+	&PKTINFO(star_a3_s1_isc_vddm_seq_01),
+	&PKTINFO(star_a3_s1_isc_vddm_seq_02),
+	&PKTINFO(star_a3_s1_isc_vddm_seq_03),
+	&PKTINFO(star_a3_s1_isc_vddm_seq_04),
+	&PKTINFO(star_a3_s1_isc_ison_seq_01),
+	&PKTINFO(star_a3_s1_isc_ison_seq_02),
+	&KEYINFO(star_a3_s1_level3_key_disable),
 	&KEYINFO(star_a3_s1_level2_key_disable),
 };
 #endif
@@ -2376,6 +2473,9 @@ static struct seqinfo star_a3_s1_seqtbl[MAX_PANEL_SEQ] = {
 #endif
 #ifdef CONFIG_SUPPORT_TDMB_TUNE
 	[PANEL_TDMB_TUNE_SEQ] = SEQINFO_INIT("tdmb_tune-seq", star_a3_s1_tdmb_tune_cmdtbl),
+#endif
+#ifdef CONFIG_SUPPORT_ISC_DEFECT
+	[PANEL_CHECK_ISC_DEFECT_SEQ] = SEQINFO_INIT("isc-defect-seq", star_a3_s1_isc_defect_cmdtbl),
 #endif
 	[PANEL_DUMP_SEQ] = SEQINFO_INIT("dump-seq", star_a3_s1_dump_cmdtbl),
 	[PANEL_DUMMY_SEQ] = SEQINFO_INIT("dummy-seq", star_a3_s1_dummy_cmdtbl),

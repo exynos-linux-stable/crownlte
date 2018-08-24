@@ -158,6 +158,8 @@ struct hrm_device_data {
 	u32 led_current;
 	u32 xtalk_code;
 	s32 hrm_threshold;
+	s32 prox_threshold;
+	u32 init_current[4];
 	s32 eol_test_is_enable;
 	u8 eol_test_status;
 	s32 pre_eol_test_is_enable;

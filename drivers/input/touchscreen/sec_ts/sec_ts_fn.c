@@ -2454,7 +2454,7 @@ static int sec_ts_read_rawp2p_data_all(struct sec_ts_data *ts,
 
 	input_info(true, &ts->client->dev, "%s: start\n", __func__);
 
-	readbytes = ts->tx_count + ts->rx_count;
+	readbytes = (ts->tx_count + ts->rx_count) * 2;
 
 	p2p_min = kzalloc(readbytes, GFP_KERNEL);
 	if (!p2p_min)
@@ -5103,7 +5103,7 @@ static void run_15khz_cm3_gap_read(void *device_data)
 	memset(&spec[0][0], 0x00, ts->tx_count * ts->rx_count * 2);
 	for (ii = 0; ii < ts->rx_count; ii++) {
 		for (jj = 0; jj < ts->tx_count; jj++) {
-			spec[ii][jj] = 7;
+			spec[ii][jj] = 11;
 		}
 	}
 	spec[0][0] = 40;
@@ -6804,6 +6804,7 @@ static void factory_cmd_result_all(void *device_data)
 {
 	struct sec_cmd_data *sec = (struct sec_cmd_data *)device_data;
 	struct sec_ts_data *ts = container_of(sec, struct sec_ts_data, sec);
+	char buff[16] = { 0 };
 
 	sec->item_count = 0;
 	memset(sec->cmd_result_all, 0x00, SEC_CMD_RESULT_STR_LEN);
@@ -6821,6 +6822,9 @@ static void factory_cmd_result_all(void *device_data)
 
 	sec->cmd_all_factory_state = SEC_CMD_STATUS_RUNNING;
 
+	snprintf(buff, sizeof(buff), "%d", ts->plat_data->item_version);
+	sec_cmd_set_cmd_result_all(sec, buff, sizeof(buff), "ITEM_VERSION");	
+
 	get_chip_vendor(sec);
 	get_chip_name(sec);
 	get_fw_ver_bin(sec);
@@ -6830,12 +6834,12 @@ static void factory_cmd_result_all(void *device_data)
 	get_gap_data(sec);
 	run_reference_read(sec);
 
-	run_raw_p2p_read_all(sec);
-
 	run_self_rawcap_read(sec);
 	get_self_channel_data(sec, TYPE_OFFSET_DATA_SDC);
 	run_self_reference_read(sec);
 	get_self_channel_data(sec, TYPE_OFFSET_DATA_SEC);
+
+	run_raw_p2p_read_all(sec);
 
 	get_wet_mode(sec);
 	get_mis_cal_info(sec);
@@ -6975,15 +6979,21 @@ static void set_aod_rect(void *device_data)
 {
 	struct sec_cmd_data *sec = (struct sec_cmd_data *)device_data;
 	struct sec_ts_data *ts = container_of(sec, struct sec_ts_data, sec);
+	struct irq_desc *desc = irq_to_desc(ts->client->irq);
 	char buff[SEC_CMD_STR_LEN] = { 0 };
 	u8 data[10] = {0x02, 0};
 	int ret, i;
 
 	sec_cmd_set_default_result(sec);
 
-	input_info(true, &ts->client->dev, "%s: w:%d, h:%d, x:%d, y:%d\n",
+	ts->irq_gpio_status = gpio_get_value(ts->plat_data->irq_gpio);
+	ts->irq_depth = desc->depth;
+	ts->irq_count = desc->irq_count;
+
+	input_info(true, &ts->client->dev, "%s: w:%d, h:%d, x:%d, y:%d, (%d,%d,%d)\n",
 			__func__, sec->cmd_param[0], sec->cmd_param[1],
-			sec->cmd_param[2], sec->cmd_param[3]);
+			sec->cmd_param[2], sec->cmd_param[3],
+			ts->irq_gpio_status, ts->irq_depth, ts->irq_count);
 
 	for (i = 0; i < 4; i++) {
 		data[i * 2 + 2] = sec->cmd_param[i] & 0xFF;

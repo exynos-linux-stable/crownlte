@@ -143,6 +143,17 @@ config SENSORS_SSP_MAGNETIC_COMMON
 	  To compile this driver as a module, choose M here: the
 	  module will be called ssp.
 
+config SENSORS_SSP_AK09918
+	tristate "Sensors ssp ak09918"
+	default n
+	depends on SPI
+	help
+	  ak09911 file for factory test and doeplus in ssp driver.
+          If you say yes here you get ak09911 support for
+	  factory test.
+	  To compile this driver as a module, choose M here: the
+	  module will be called ssp.
+	  
 config SENSORS_SSP_CM3320
 	tristate "Sensors ssp cm3320"
 	default n
@@ -285,6 +296,16 @@ config SENSORS_HRM_MAX86915
 	tristate "HRM Sensor Driver MAX86915"
 	default n
 	depends on SENSORS_HRMSENSOR
+	help
+	  If you say yes here you get support for the HRM sensor.
+	  This driver should be set with SENSORS_HRMSENSOR.
+	  This driver can also be built as a module.  If so, the module
+	  will be called max86915.
+
+config SENSORS_MAX86915
+	tristate "HRM Sensor Driver MAX86915"
+	default n
+	depends on I2C
 	help
 	  If you say yes here you get support for the HRM sensor.
 	  This driver should be set with SENSORS_HRMSENSOR.
@@ -457,6 +478,13 @@ config SENSORS_SSP_LIGHT_REPORT_LUX
 	depends on SPI
 	help
 	  If you want to report lux, it should be set.
+
+config SENSORS_SSP_LIGHT_MAX_GAIN_2BYTE
+	tristate "Sensors ssp light sensor auto gain control, max gain value is 512"
+	default n
+	depends on SPI
+	help
+	  If you want to use max gain value, it should be set.
 
 config SENSORS_SSP_LIGHT_COLORID
 	tristate "Sensors ssp light sensor change coef by color id"

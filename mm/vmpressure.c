@@ -101,6 +101,10 @@ static const char * const vmpressure_str_levels[] = {
 
 static enum vmpressure_levels vmpressure_level(unsigned long pressure)
 {
+	trace_printk("tracing_mark_write: C|99|MP Level|%d\n", 
+		(pressure >= vmpressure_level_critical ? VMPRESSURE_CRITICAL : 
+		(pressure >= vmpressure_level_med ? VMPRESSURE_MEDIUM : VMPRESSURE_LOW)));
+
 	if (pressure >= vmpressure_level_critical)
 		return VMPRESSURE_CRITICAL;
 	else if (pressure >= vmpressure_level_med)
@@ -109,7 +113,7 @@ static enum vmpressure_levels vmpressure_level(unsigned long pressure)
 }
 
 static enum vmpressure_levels vmpressure_calc_level(unsigned long scanned,
-						    unsigned long reclaimed)
+						    unsigned long reclaimed, struct vmpressure *vmpr)
 {
 	unsigned long scale = scanned + reclaimed;
 	unsigned long pressure = 0;
@@ -131,7 +135,13 @@ static enum vmpressure_levels vmpressure_calc_level(unsigned long scanned,
 	pressure = scale - (reclaimed * scale / scanned);
 	pressure = pressure * 100 / scale;
 
+	vmpr->pressure = pressure;
 out:
+	trace_printk("tracing_mark_write: C|99|vMP|%d\n", (int)pressure);
+	trace_printk("tracing_mark_write: C|99|vMP|0\n");
+	trace_printk("tracing_mark_write: C|%d|vMP|%d\n", current->tgid,
+													(int)pressure);
+	trace_printk("tracing_mark_write: C|%d|vMP|0\n", current->tgid);
 	pr_debug("%s: %3lu  (s: %lu  r: %lu)\n", __func__, pressure,
 		 scanned, reclaimed);
 
@@ -191,7 +201,7 @@ static void vmpressure_work_fn(struct work_struct *work)
 	vmpr->tree_reclaimed = 0;
 	spin_unlock(&vmpr->sr_lock);
 
-	level = vmpressure_calc_level(scanned, reclaimed);
+	level = vmpressure_calc_level(scanned, reclaimed, vmpr);
 
 	do {
 		if (vmpressure_event(vmpr, level))
@@ -280,7 +290,7 @@ void vmpressure(gfp_t gfp, struct mem_cgroup *memcg, bool tree,
 		vmpr->scanned = vmpr->reclaimed = 0;
 		spin_unlock(&vmpr->sr_lock);
 
-		level = vmpressure_calc_level(scanned, reclaimed);
+		level = vmpressure_calc_level(scanned, reclaimed, vmpr);
 
 		if (level > VMPRESSURE_LOW) {
 			/*

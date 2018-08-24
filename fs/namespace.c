@@ -317,6 +317,11 @@ static struct mount *alloc_vfsmnt(const char *name)
 		mnt->mnt_count = 1;
 		mnt->mnt_writers = 0;
 #endif
+#ifdef CONFIG_RKP_NS_PROT
+		rkp_set_data(mnt->mnt,NULL);
+#else
+		mnt->mnt.data = NULL;
+#endif
 
 		INIT_HLIST_NODE(&mnt->mnt_hash);
 		INIT_LIST_HEAD(&mnt->mnt_child);

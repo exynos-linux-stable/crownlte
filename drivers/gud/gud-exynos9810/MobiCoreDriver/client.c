@@ -260,7 +260,7 @@ static struct cwsm *cwsm_create(struct tee_client *client,
 		goto err_cwsm;
 	}
 
-	/* Intialise maps */
+	/* Initialise maps */
 	memset(&map, 0, sizeof(map));
 	tee_mmu_buffer(cwsm->mmu, &map);
 	/* FIXME Flags must be stored in MMU (needs recent trunk change) */
@@ -342,9 +342,9 @@ static inline struct cwsm *cwsm_find(struct tee_client *client,
 		mc_dev_devel("candidate buf %llx size %llu flags %x",
 			     candidate->memref.buffer, candidate->memref.size,
 			     candidate->memref.flags);
-		if ((candidate->memref.buffer == memref->buffer) &&
-		    (candidate->memref.size == memref->size) &&
-		    (candidate->memref.flags == memref->flags)) {
+		if (candidate->memref.buffer == memref->buffer &&
+		    candidate->memref.size == memref->size &&
+		    candidate->memref.flags == memref->flags) {
 			cwsm = candidate;
 			cwsm_get(cwsm);
 			mc_dev_devel("match");
@@ -1189,7 +1189,7 @@ int client_cbuf_create(struct tee_client *client, u32 len, uintptr_t *addr,
 	if (!client)
 		return -EINVAL;
 
-	if (!len || (len > BUFFER_LENGTH_MAX))
+	if (!len || len > BUFFER_LENGTH_MAX)
 		return -EINVAL;
 
 	order = get_order(len);
@@ -1277,7 +1277,7 @@ static struct cbuf *cbuf_get_by_addr(struct tee_client *client, uintptr_t addr)
 		if (!start)
 			break;
 
-		if ((addr >= start) && (addr < end)) {
+		if (addr >= start && addr < end) {
 			cbuf = candidate;
 			break;
 		}
@@ -1313,13 +1313,14 @@ int client_cbuf_free(struct tee_client *client, uintptr_t addr)
 }
 
 bool client_gp_operation_add(struct tee_client *client,
-			     struct client_gp_operation *operation) {
+			     struct client_gp_operation *operation)
+{
 	struct client_gp_operation *op;
 	bool found = false;
 
 	mutex_lock(&client->quick_lock);
 	list_for_each_entry(op, &client->operations, list)
-		if ((op->started == operation->started) && op->cancelled) {
+		if (op->started == operation->started && op->cancelled) {
 			found = true;
 			break;
 		}
@@ -1339,7 +1340,8 @@ bool client_gp_operation_add(struct tee_client *client,
 }
 
 void client_gp_operation_remove(struct tee_client *client,
-				struct client_gp_operation *operation) {
+				struct client_gp_operation *operation)
+{
 	mutex_lock(&client->quick_lock);
 	list_del(&operation->list);
 	mutex_unlock(&client->quick_lock);

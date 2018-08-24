@@ -22,7 +22,7 @@
  *
  */
 
-  /* usb notify layer v3.1 */
+  /* usb notify layer v3.2 */
 
 #ifndef __EXTERNAL_NOTIFY_H__
 #define __EXTERNAL_NOTIFY_H__

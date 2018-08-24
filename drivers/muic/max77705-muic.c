@@ -894,7 +894,7 @@ static ssize_t max77705_muic_set_apo_factory(struct device *dev,
 	return count;
 }
 
-#if defined(CONFIG_HV_MUIC_MAX77705_AFC)
+#if defined(CONFIG_HV_MUIC_MAX77705_AFC) || defined(CONFIG_SUPPORT_QC30)
 static ssize_t max77705_muic_show_afc_disable(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -917,9 +917,7 @@ static ssize_t max77705_muic_set_afc_disable(struct device *dev,
 	struct max77705_muic_data *muic_data = dev_get_drvdata(dev);
 	struct muic_platform_data *pdata = muic_data->pdata;
 	int param_val, ret = 0;
-#if defined(CONFIG_MUIC_HV) || defined(CONFIG_SUPPORT_QC30)
 	union power_supply_propval psy_val;
-#endif
 
 	if (!strncasecmp(buf, "1", 1)) {
 		ret = sec_set_param(CM_OFFSET + 1, '1');
@@ -946,11 +944,8 @@ static ssize_t max77705_muic_set_afc_disable(struct device *dev,
 #endif
 	pr_info("%s afc_disable(%d)\n", __func__, pdata->afc_disable);
 
-#if defined(CONFIG_MUIC_HV) || defined(CONFIG_SUPPORT_QC30)
-		psy_val.intval = param_val;
-		psy_do_property("battery", set,
-			POWER_SUPPLY_EXT_PROP_HV_DISABLE, psy_val);
-#endif
+	psy_val.intval = param_val;
+	psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_HV_DISABLE, psy_val);
 
 	return count;
 }
@@ -1202,6 +1197,13 @@ static int max77705_muic_handle_detach(struct max77705_muic_data *muic_data, int
 	case ATTACHED_DEV_JIG_USB_ON_MUIC:
 	case ATTACHED_DEV_NONE_MUIC:
 		com_to_open(muic_data);
+		break;
+	case ATTACHED_DEV_USB_MUIC:
+	case ATTACHED_DEV_CDP_MUIC:
+	case ATTACHED_DEV_OTG_MUIC:
+	case ATTACHED_DEV_TIMEOUT_OPEN_MUIC:
+		if (muic_data->ccic_info_data.ccic_evt_attached == MUIC_CCIC_NOTI_DETACH)
+			com_to_open(muic_data);
 		break;
 	case ATTACHED_DEV_UNOFFICIAL_ID_MUIC:
 		goto out_without_noti;
@@ -2419,9 +2421,6 @@ int max77705_muic_remove(struct max77705_usbc_platform_data *usbc_data)
 
 		max77705_muic_free_irqs(muic_data);
 
-		if (muic_data->pdata->cleanup_switch_dev_cb)
-			muic_data->pdata->cleanup_switch_dev_cb();
-
 		cancel_delayed_work(&(muic_data->vbus_wa_work));
 
 #if defined(CONFIG_MUIC_MAX77705_CCIC)
@@ -2438,6 +2437,9 @@ int max77705_muic_remove(struct max77705_usbc_platform_data *usbc_data)
 		muic_unregister_usb_notifier(muic_data);
 		cancel_delayed_work_sync(&(muic_data->debug_work));
 
+		if (muic_data->pdata->cleanup_switch_dev_cb)
+			muic_data->pdata->cleanup_switch_dev_cb();
+
 		mutex_destroy(&muic_data->muic_mutex);
 		wake_lock_destroy(&muic_data->muic_wake_lock);
 	}
@@ -2448,7 +2450,6 @@ int max77705_muic_remove(struct max77705_usbc_platform_data *usbc_data)
 void max77705_muic_shutdown(struct max77705_usbc_platform_data *usbc_data)
 {
 	struct max77705_muic_data *muic_data = usbc_data->muic_data;
-	struct i2c_client *i2c;
 
 	pr_info("%s +\n", __func__);
 
@@ -2462,17 +2463,6 @@ void max77705_muic_shutdown(struct max77705_usbc_platform_data *usbc_data)
 	com_to_open(muic_data);
 
 	max77705_muic_free_irqs(muic_data);
-
-	i2c = muic_data->i2c;
-
-	if (!i2c) {
-		pr_err("%s no muic i2c client\n", __func__);
-		goto out_cleanup;
-	}
-
-out_cleanup:
-	if (muic_data->pdata && muic_data->pdata->cleanup_switch_dev_cb)
-		muic_data->pdata->cleanup_switch_dev_cb();
 
 	cancel_delayed_work(&(muic_data->vbus_wa_work));
 

@@ -15,6 +15,9 @@
 #include <linux/slab.h>
 #include <linux/regulator/s2dos05.h>
 #include <linux/platform_device.h>
+#ifdef CONFIG_SEC_PM
+#include <linux/sec_sysfs.h>
+#endif /* CONFIG_SEC_PM */
 
 #define CURRENT_METER	1
 #define POWER_METER	2
@@ -25,6 +28,9 @@
 struct adc_info *adc_meter1;
 struct device *s2dos05_adc_dev;
 struct class *s2dos05_adc_class;
+#ifdef CONFIG_SEC_PM
+static struct device *sec_disp_pmic_dev;
+#endif /* CONFIG_SEC_PM */
 
 struct adc_info {
 	struct i2c_client *i2c;
@@ -501,58 +507,71 @@ void s2dos05_powermeter_init(struct s2dos05_dev *s2dos05)
 	/* create sysfs entries */
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_en);
 	if (ret)
-		goto remove_adc_en;
+		goto err_free;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_mode);
 	if (ret)
-		goto remove_adc_mode;
+		goto remove_adc_en;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_sync_mode);
 	if (ret)
-		goto remove_adc_sync_mode;
+		goto remove_adc_mode;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_all);
 	if (ret)
-		goto remove_adc_val_all;
+		goto remove_adc_sync_mode;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_0);
 	if (ret)
-		goto remove_adc_val_0;
+		goto remove_adc_val_all;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_1);
 	if (ret)
-		goto remove_adc_val_1;
+		goto remove_adc_val_0;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_2);
 	if (ret)
-		goto remove_adc_val_2;
+		goto remove_adc_val_1;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_3);
 	if (ret)
-		goto remove_adc_val_3;
+		goto remove_adc_val_2;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_4);
 	if (ret)
-		goto remove_adc_val_4;
+		goto remove_adc_val_3;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_5);
 	if (ret)
-		goto remove_adc_val_5;
+		goto remove_adc_val_4;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_6);
 	if (ret)
-		goto remove_adc_val_6;
+		goto remove_adc_val_5;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_val_7);
 	if (ret)
-		goto remove_adc_val_7;
+		goto remove_adc_val_6;
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_ctrl1);
 	if (ret)
-		goto remove_adc_ctrl1;
+		goto remove_adc_val_7;
 #ifdef CONFIG_SEC_PM
 	ret = device_create_file(s2dos05_adc_dev, &dev_attr_adc_validity);
 	if (ret)
+		goto remove_adc_ctrl1;
+
+	sec_disp_pmic_dev = sec_device_create(NULL, "disp_pmic");
+	if (unlikely(IS_ERR(sec_disp_pmic_dev))) {
+		pr_err("%s: Failed to create disp_pmic device\n", __func__);
 		goto remove_adc_validity;
+	}
+
+	ret = sysfs_create_link(&sec_disp_pmic_dev->kobj, &s2dos05_adc_dev->kobj, "power_meter");
+	if (ret)
+		goto remove_sec_disp_pmic_dev;
+
 #endif /* CONFIG_SEC_PM */
 
 	pr_info("%s: s2dos05 power meter init end\n", __func__);
 	return;
 
 #ifdef CONFIG_SEC_PM
+remove_sec_disp_pmic_dev:
+	sec_device_destroy(sec_disp_pmic_dev->devt);
 remove_adc_validity:
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_validity);
-#endif /* CONFIG_SEC_PM */
 remove_adc_ctrl1:
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_ctrl1);
+#endif /* CONFIG_SEC_PM */
 remove_adc_val_7:
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_val_7);
 remove_adc_val_6:
@@ -577,7 +596,7 @@ remove_adc_mode:
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_mode);
 remove_adc_en:
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_en);
-
+err_free:
 	kfree(adc_meter1->adc_val);
 	dev_info(s2dos05->dev, "%s : fail to create sysfs\n", __func__);
 }
@@ -600,6 +619,7 @@ void s2dos05_powermeter_deinit(struct s2dos05_dev *s2dos05)
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_ctrl1);
 #ifdef CONFIG_SEC_PM
 	device_remove_file(s2dos05_adc_dev, &dev_attr_adc_validity);
+	sec_device_destroy(sec_disp_pmic_dev->devt);
 #endif /* CONFIG_SEC_PM */
 
 	/* ADC turned off */

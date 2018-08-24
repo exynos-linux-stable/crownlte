@@ -66,6 +66,7 @@ obj-$(CONFIG_FB_I810)           += video/fbdev/i810/
 obj-$(CONFIG_FB_INTEL)          += video/fbdev/intelfb/
 
 obj-$(CONFIG_VBUS_NOTIFIER)	+= staging/samsung/sec_notifier/
+obj-$(CONFIG_DEV_RIL_BRIDGE)	+= misc/dev_ril_bridge/
 obj-$(CONFIG_USE_MUIC)		+= muic/
 
 obj-$(CONFIG_PARPORT)		+= parport/
@@ -204,6 +205,9 @@ obj-$(CONFIG_EXYNOS_BTS)	+= bts/
 
 # Mobicore driver
 obj-$(CONFIG_TRUSTONIC_TEE)     += gud/
+
+# FIVE TEE driver
+obj-$(CONFIG_FIVE_TEE_DRIVER)	+= five/
 
 # Vision driver
 obj-$(CONFIG_VISION_SUPPORT)	+= vision/

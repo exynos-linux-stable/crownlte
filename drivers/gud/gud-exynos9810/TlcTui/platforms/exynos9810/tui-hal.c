@@ -377,12 +377,10 @@ uint32_t hal_tui_deactivate(void)
 
 	pr_info("tsp_irq_num =%d\n", tsp_irq_num);
 
-#if defined(CONFIG_TOUCHSCREEN_SEC_TS)
+#if defined(CONFIG_TOUCHSCREEN_SEC_TS) || defined(CONFIG_TOUCHSCREEN_SEC_TS_Y771)
 	tui_delay(5);
 	trustedui_mode_on();
 	tui_delay(95);
-#else
-	tui_delay(1);
 #endif
 
 #ifdef CONFIG_TRUSTONIC_TRUSTED_UI_FB_BLANK
@@ -443,6 +441,12 @@ uint32_t hal_tui_activate(void)
 
 	//switch_set_state(&tui_switch, TRUSTEDUI_MODE_OFF);
 	enable_irq(tsp_irq_num);
+
+#if defined(CONFIG_TOUCHSCREEN_SEC_TS) || defined(CONFIG_TOUCHSCREEN_SEC_TS_Y771)
+	tui_delay(5);
+	trustedui_mode_off();
+	tui_delay(95);
+#endif
 
 	/* Clear linux TUI flag */
 	trustedui_set_mode(TRUSTEDUI_MODE_OFF);

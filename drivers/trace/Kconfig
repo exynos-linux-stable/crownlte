@@ -102,6 +102,11 @@ config EXYNOS_SNAPSHOT_SPI
 	depends on EXYNOS_SNAPSHOT && !EXYNOS_SNAPSHOT_MINIMIZED_MODE
 	default y
 
+config EXYNOS_SNAPSHOT_LOGGING_HVC_CALL
+	bool "Support logging HVC call"
+	depends on EXYNOS_SNAPSHOT && !EXYNOS_SNAPSHOT_MINIMIZED_MODE && UH
+	default n
+
 config EXYNOS_SNAPSHOT_PANIC_REBOOT
 	bool "Enable forced reboot after panic for ramdump"
 	depends on EXYNOS_SNAPSHOT
@@ -203,4 +208,5 @@ config EXYNOS_CORESIGHT_ETM_SYSFS
         default n
         help
           Show ETM, FUNNEL, ETB, ETF and ETR status through sysfs.
+
 endif

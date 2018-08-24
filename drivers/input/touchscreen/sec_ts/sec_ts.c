@@ -1749,6 +1749,9 @@ static int sec_ts_parse_dt(struct i2c_client *client)
 	pdata->support_sidegesture = of_property_read_bool(np, "sec,support_sidegesture");
 	pdata->support_dex = of_property_read_bool(np, "support_dex_mode");
 
+	if (of_property_read_u32(np, "sec,factory_item_version", &pdata->item_version) < 0)
+		pdata->item_version = 0;
+
 #ifdef CONFIG_SEC_FACTORY
 	pdata->support_mt_pressure = true;
 #endif
@@ -2723,6 +2726,7 @@ static int sec_ts_input_open(struct input_dev *dev)
 static void sec_ts_input_close(struct input_dev *dev)
 {
 	struct sec_ts_data *ts = input_get_drvdata(dev);
+	struct irq_desc *desc = irq_to_desc(ts->client->irq);
 
 	if (!ts->info_work_done) {
 		input_err(true, &ts->client->dev, "%s not finished info work\n", __func__);
@@ -2733,7 +2737,12 @@ static void sec_ts_input_close(struct input_dev *dev)
 
 	ts->input_closed = true;
 
-	input_info(true, &ts->client->dev, "%s\n", __func__);
+	ts->irq_gpio_status = gpio_get_value(ts->plat_data->irq_gpio);
+	ts->irq_depth = desc->depth;
+	ts->irq_count = desc->irq_count;
+
+	input_info(true, &ts->client->dev, "%s: %d,%d,%d\n", __func__,
+			ts->irq_gpio_status, ts->irq_depth, ts->irq_count);
 
 #ifdef TCLM_CONCEPT
 	sec_tclm_debug_info(ts->tdata);

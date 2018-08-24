@@ -2347,7 +2347,7 @@ const struct soc_enum madera_anc_input_src[] = {
 			ARRAY_SIZE(madera_anc_input_src_text),
 			madera_anc_input_src_text),
 	SOC_ENUM_SINGLE(MADERA_FCL_ADC_REFORMATTER_CONTROL,
-			MADERA_FCL_MIC_MODE_SEL,
+			MADERA_FCL_MIC_MODE_SEL_SHIFT,
 			ARRAY_SIZE(madera_anc_channel_src_text),
 			madera_anc_channel_src_text),
 	SOC_ENUM_SINGLE(MADERA_ANC_SRC,
@@ -2355,7 +2355,7 @@ const struct soc_enum madera_anc_input_src[] = {
 			ARRAY_SIZE(madera_anc_input_src_text),
 			madera_anc_input_src_text),
 	SOC_ENUM_SINGLE(MADERA_FCR_ADC_REFORMATTER_CONTROL,
-			MADERA_FCR_MIC_MODE_SEL,
+			MADERA_FCR_MIC_MODE_SEL_SHIFT,
 			ARRAY_SIZE(madera_anc_channel_src_text),
 			madera_anc_channel_src_text),
 };
@@ -2556,6 +2556,7 @@ int madera_in_ev(struct snd_soc_dapm_widget *w, struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct madera_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct madera *madera = priv->madera;
 	unsigned int reg;
 
 	if (w->shift % 2)
@@ -2569,7 +2570,10 @@ int madera_in_ev(struct snd_soc_dapm_widget *w, struct snd_kcontrol *kcontrol,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		priv->in_pending--;
-		snd_soc_update_bits(codec, reg, MADERA_IN1L_MUTE, 0);
+		if (!madera->pdata.accdet[0].enabled ||
+		    madera->pdata.accdet[0].hs_mic != (w->shift ^ 1) + 1 ||
+		    !madera->hs_mic_muted)
+			snd_soc_update_bits(codec, reg, MADERA_IN1L_MUTE, 0);
 
 		/* If this is the last input pending then allow VU */
 		if (priv->in_pending == 0) {
@@ -4304,14 +4308,18 @@ static int madera_enable_fll(struct madera_fll *fll)
 	case CS47L35:
 		switch (fll->madera->rev) {
 		case 0:
+			gain = cfg.gain;
 			break;
 		default:
 			fll_change |=
 				madera_set_fll_phase_integrator(fll, &cfg,
 								have_sync);
+			if (!have_sync && (cfg.theta == 0))
+				gain = cfg.alt_gain;
+			else
+				gain = cfg.gain;
 			break;
 		}
-		gain = cfg.gain;
 		break;
 	case CS47L85:
 	case WM1840:

@@ -1,15 +1,11 @@
-dtb-$(CONFIG_ARCH_EXYNOS) += exynos7-espresso.dtb
+dtb-y += exynos9810-crownlte_eur_open_17.dtb
+dtb-y += exynos9810-crownlte_eur_open_18.dtb
+dtb-y += exynos9810-crownlte_eur_open_19.dtb
+dtb-y += exynos9810-crownlte_eur_open_21.dtb
+dtb-y += exynos9810-crownlte_eur_open_23.dtb
+dtb-y += exynos9810-crownlte_eur_open_24.dtb
+dtb-y += exynos9810-crownlte_eur_open_25.dtb
+dtb-y += exynos9810-crownlte_eur_open_26.dtb
 
-dtb-$(CONFIG_SOC_EXYNOS8895) += exynos8895-smdk8895.dtb
-dtb-$(CONFIG_SOC_EXYNOS9810) += \
-	exynos9810.dtb
-
-dtbo-$(CONFIG_SOC_EXYNOS9810) += \
-	exynos9810-universal9810.dtbo \
-	exynos9810-universal9810-2.dtbo \
-	exynos9810-universal9810-rev02.dtbo \
-	exynos9810-universal9810-2-rev02.dtbo
-
-# always		:= $(dtb-y) $(dtbo-y)
-subdir-y	:= $(dts-dirs)
-clean-files	:= *.dtb *.dtbo
+always            := $(dtb-y) $(dtbo-y)
+clean-files       := *.dtb*

@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_cfg80211.c 722772 2017-09-21 09:52:00Z $
+ * $Id: dhd_cfg80211.c 762142 2018-05-11 03:34:30Z $
  */
 
 #include <linux/vmalloc.h>

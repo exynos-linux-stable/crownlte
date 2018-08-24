@@ -1040,10 +1040,9 @@ int fimc_is_hardware_get_meta(struct fimc_is_hw_ip *hw_ip, struct fimc_is_frame 
 	switch (hw_ip->id) {
 	case DEV_HW_3AA0:
 	case DEV_HW_3AA1:
+		copy_ctrl_to_dm(frame->shot);
 	case DEV_HW_ISP0:
 	case DEV_HW_ISP1:
-		copy_ctrl_to_dm(frame->shot);
-
 		ret = CALL_HW_OPS(hw_ip, get_meta, frame, hw_map);
 		if (ret) {
 			mserr_hw("[F:%d] get_meta fail", instance, hw_ip, frame->fcount);

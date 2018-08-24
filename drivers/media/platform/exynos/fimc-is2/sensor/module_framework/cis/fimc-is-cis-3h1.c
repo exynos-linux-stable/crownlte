@@ -56,7 +56,7 @@ static bool sensor_3h1_cis_is_wdr_mode_on(cis_shared_data *cis_data)
 	unsigned int mode = cis_data->sens_config_index_cur;
 
 	if (fimc_is_vender_wdr_mode_on(cis_data) &&
-		(mode == SENSOR_3H1_3280X2464_30FPS
+		(mode == SENSOR_3H1_3264X2448_30FPS
 		|| mode == SENSOR_3H1_2448X2448_30FPS
 		|| mode == SENSOR_3H1_3264X1836_30FPS
 		|| mode == SENSOR_3H1_3264X1592_30FPS))

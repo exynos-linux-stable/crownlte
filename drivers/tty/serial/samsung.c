@@ -91,7 +91,7 @@ static void dbg(const char *fmt, ...)
 #define S3C24XX_SERIAL_MAJOR	204
 #define S3C24XX_SERIAL_MINOR	64
 
-#if defined(CONFIG_SEC_FACTORY)
+#ifndef CONFIG_SAMSUNG_PRODUCT_SHIP
 #define SERIAL_UART_TRACE 1
 #define PROC_SERIAL_DIR	"serial/uart"
 #define SERIAL_UART_PORT_LINE 0
@@ -278,28 +278,28 @@ static void uart_copy_to_local_buf(int dir, struct uart_local_buf *local_buf,
 	time = cpu_clock(cpu);
 	rem_nsec = do_div(time, NSEC_PER_SEC);
 
-	if (local_buf->index + (len * 2 + 30) >= local_buf->size)
+	if (local_buf->index + (len * 3 + 30) >= local_buf->size)
 		local_buf->index = 0;
 
-	local_buf->index += snprintf(local_buf->buffer + local_buf->index,
+	local_buf->index += scnprintf(local_buf->buffer + local_buf->index,
 			local_buf->size - local_buf->index,
 			"[%5lu.%06lu] ",
 			(unsigned long)time, rem_nsec / NSEC_PER_USEC);
 
 	if (dir == 1)
-		local_buf->index += snprintf(local_buf->buffer + local_buf->index,
+		local_buf->index += scnprintf(local_buf->buffer + local_buf->index,
 				local_buf->size - local_buf->index, "[RX] ");
 	else
-		local_buf->index += snprintf(local_buf->buffer + local_buf->index,
+		local_buf->index += scnprintf(local_buf->buffer + local_buf->index,
 				local_buf->size - local_buf->index, "[TX] ");
 
 	for (i = 0; i < len; i++) {
-		local_buf->index += snprintf(local_buf->buffer + local_buf->index,
+		local_buf->index += scnprintf(local_buf->buffer + local_buf->index,
 				local_buf->size - local_buf->index,
 				"%02X ", trace_buf[i]);
 	}
 
-	local_buf->index += snprintf(local_buf->buffer + local_buf->index,
+	local_buf->index += scnprintf(local_buf->buffer + local_buf->index,
 			local_buf->size - local_buf->index, "\n");
 }
 

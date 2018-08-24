@@ -77,6 +77,40 @@ module_param_named(enable, sec_debug_level.en.kernel_fault, ushort, 0644);
 module_param_named(enable_user, sec_debug_level.en.user_fault, ushort, 0644);
 module_param_named(level, sec_debug_level.uint_val, uint, 0644);
 
+long __debug_sj_lock;
+
+int sec_debug_check_sj(void)
+{
+	if (__debug_sj_lock == 1)
+		/* Locked */
+		return 1;
+	else if (__debug_sj_lock == 0)
+		/* Unlocked */
+		return 0;
+
+	return -1;
+}
+
+static int __init sec_debug_get_sj_status(char *str)
+{
+	unsigned long val = memparse(str, &str);
+
+	pr_err("%s: start %lx\n", __func__, val);
+
+	if (!val) {
+		pr_err("%s: UNLOCKED (%lx)\n", __func__, val);
+		__debug_sj_lock = 0;
+		/* Unlocked or Disabled */
+		return 0;
+	} else {
+		pr_err("%s: LOCKED (%lx)\n", __func__, val);
+		__debug_sj_lock = 1;
+		/* Locked */
+		return 1;
+	}
+}
+__setup("sec_debug.sjl=", sec_debug_get_sj_status);
+
 static int sec_debug_reserve_ok;
 
 int sec_debug_get_debug_level(void)
@@ -515,6 +549,11 @@ void sec_debug_post_panic_handler(void)
 {
 	hard_reset_delay();
 
+	if (sec_debug_check_sj())
+		pr_emerg("%s: secure jtag LOCKED\n", __func__);
+	else
+		pr_emerg("%s: secure jtag UNLOCKED\n", __func__);
+
 	/* reset */
 	pr_emerg("sec_debug: %s\n", linux_banner);
 	pr_emerg("sec_debug: rebooting...\n");
@@ -867,6 +906,50 @@ out:
 }
 __setup("sec_debug.base=", sec_debug_base_setup);
 
+#if defined(CONFIG_SEC_DEBUG_SUPPORT_FORCE_UPLOAD)
+static long __force_upload;
+
+static int sec_debug_get_force_upload(void)
+{
+	if (__force_upload == 1)
+		/* enabled */
+		return 1;
+	else if (__force_upload == 0)
+		/* disabled */
+		return 0;
+
+	return -1;
+}
+
+static int __init sec_debug_force_upload(char *str)
+{
+	unsigned long val = memparse(str, &str);
+
+	pr_err("%s: start %lx\n", __func__, val);
+
+	if (!val) {
+		pr_err("%s: disabled (%lx)\n", __func__, val);
+		__force_upload = 0;
+		/* Unlocked or Disabled */
+		return 1;
+	} else {
+		pr_err("%s: enabled (%lx)\n", __func__, val);
+		__force_upload = 1;
+		/* Locked */
+		return 1;
+	}
+}
+__setup("androidboot.force_upload=", sec_debug_force_upload);
+#endif
+
+int sec_debug_enter_upload(void)
+{
+#if defined(CONFIG_SEC_DEBUG_SUPPORT_FORCE_UPLOAD)
+	return sec_debug_get_force_upload();
+#else
+	return sec_debug_get_debug_level();
+#endif
+}
 #endif /* CONFIG_SEC_DEBUG */
 
 #if defined(CONFIG_SEC_DUMP_SUMMARY)

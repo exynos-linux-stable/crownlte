@@ -490,10 +490,16 @@ int sensor_3m3_cis_update_crop_region(struct v4l2_subdev *subdev)
 
 	info("[%s] dummy_flag[%x], crop_num[%x]", __func__, dummy_flag, crop_num);
 
-	if (dummy_flag == 7 && (crop_num >= 1 && crop_num <= 9)) {
+	if (dummy_flag == 7 && (crop_num >= 1 && crop_num <= 9)) { /* Get a crop shift num from cal data */
 		cis->cis_data->sensor_shifted_num = crop_num;
-	} else {
+	} else if (dummy_flag == 4)  { /* Map to a fixed crop shiift num */
+		crop_num = FIXED_SENSOR_CROP_SHIFT_NUM;
+		cis->cis_data->sensor_shifted_num = crop_num;
+	} else { /* Invalid cal data. Contrast AF only */
 		cis->cis_data->sensor_shifted_num = 0;
+	}
+
+	if (cis->cis_data->sensor_shifted_num == 0) {
 		return 0;
 	}
 
@@ -2004,10 +2010,16 @@ static int sensor_3m3_cis_update_pdaf_tail_size(struct v4l2_subdev *subdev, stru
 
 	info("[%s] dummy_flag[%x], crop_num[%x]", __func__, dummy_flag, crop_num);
 
-	if (dummy_flag == 7 && (crop_num >= 1 && crop_num <= 9)) {
+	if (dummy_flag == 7 && (crop_num >= 1 && crop_num <= 9)) { /* Get a crop shift num from cal data */
 		cis->cis_data->sensor_shifted_num = crop_num;
-	} else {
+	} else if (dummy_flag == 4)  { /* Map to a fixed crop shiift num */
+		crop_num = FIXED_SENSOR_CROP_SHIFT_NUM;
+		cis->cis_data->sensor_shifted_num = crop_num;
+	} else { /* Invalid cal data. Contrast AF only */
 		cis->cis_data->sensor_shifted_num = 0;
+	}
+
+	if (cis->cis_data->sensor_shifted_num == 0) {
 		return 0;
 	}
 

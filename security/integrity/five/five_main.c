@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/xattr.h>
 #include <crypto/hash_info.h>
+#include <linux/ptrace.h>
 #include <linux/task_integrity.h>
 
 #include "five.h"
@@ -32,6 +33,7 @@
 #include "five_state.h"
 #include "five_pa.h"
 #include "five_trace.h"
+#include "five_porting.h"
 
 static struct workqueue_struct *g_five_workqueue;
 
@@ -448,17 +450,15 @@ static int process_measurement(const struct processing_event_list *params)
 		trace_op = FIVE_TRACE_MEASUREMENT_OP_CALC;
 		rc = five_cert_fillout(&cert, xattr_value, xattr_len);
 		if (rc) {
-			pr_err("FIVE: certificate is incorrect inode=%lu\n", inode->i_ino);
+			pr_err("FIVE: certificate is incorrect inode=%lu\n",
+								inode->i_ino);
 			goto out_digsig;
 		}
 
 		pcert = &cert;
 
-		// TODO (v.vovchenko):
-		// to investigate possible to move above this case
 		if (file->f_flags & O_DIRECT) {
-			rc = (iint->five_flags & IMA_PERMIT_DIRECTIO) ?
-								0 : -EACCES;
+			rc = -EACCES;
 			goto out_digsig;
 		}
 	}
@@ -513,22 +513,15 @@ out:
 	}
 
 	if (hook_affects_integrity(fn)) {
-		int new_tint;
+		enum task_integrity_value new_tint;
+		bool is_newstate;
 		const char *msg = NULL;
 
-		new_tint = five_state_proceed(iint, integrity, fn, &msg);
-		if (fn == BPRM_CHECK) {
+		is_newstate = five_state_proceed(iint, integrity, fn,
+				&new_tint, &msg);
+		if (is_newstate && msg) {
 			five_audit_verbose(task, file, get_string_fn(fn),
-					prev_tint,
-					(enum integrity_status)new_tint,
-					"bprm-check", rc);
-		}
-
-		if (new_tint >= 0 && msg) {
-			five_audit_verbose(task, file, get_string_fn(fn),
-					prev_tint,
-					(enum integrity_status)new_tint, msg,
-					rc);
+					prev_tint, new_tint, msg, rc);
 		}
 	}
 
@@ -581,7 +574,8 @@ int five_bprm_check(struct linux_binprm *bprm)
 		task_integrity_put(task->integrity);
 		task->integrity = task_integrity_alloc();
 		if (likely(task->integrity)) {
-			rc = push_file_event_bunch(task, bprm->file, BPRM_CHECK);
+			rc = push_file_event_bunch(task,
+							bprm->file, BPRM_CHECK);
 			if (!rc)
 				rc = fivepa_push_set_xattr_event(
 							task, bprm->file);
@@ -694,12 +688,66 @@ int five_fork(struct task_struct *task, struct task_struct *child_task)
 	return rc;
 }
 
-int five_ptrace(long request, struct task_struct *task)
+int five_ptrace(struct task_struct *task, long request)
 {
-#ifdef CONFIG_FIVE_DEBUG
-	pr_info("FIVE: task gpid=%d pid=%d is traced, request=%ld\n",
-		task_pid_nr(task->group_leader), task_pid_nr(task), request);
+	switch (request) {
+	case PTRACE_TRACEME:
+	case PTRACE_ATTACH:
+	case PTRACE_SEIZE:
+	case PTRACE_INTERRUPT:
+	case PTRACE_CONT:
+	case PTRACE_DETACH:
+	case PTRACE_PEEKTEXT:
+	case PTRACE_PEEKDATA:
+	case PTRACE_PEEKUSR:
+	case PTRACE_GETREGSET:
+	case PTRACE_GETSIGINFO:
+	case PTRACE_PEEKSIGINFO:
+	case PTRACE_GETSIGMASK:
+	case PTRACE_GETEVENTMSG:
+#ifdef CONFIG_ARM64
+	case COMPAT_PTRACE_GETREGS:
+	case COMPAT_PTRACE_GET_THREAD_AREA:
+	case COMPAT_PTRACE_GETVFPREGS:
+	case COMPAT_PTRACE_GETHBPREGS:
+#else
+	case PTRACE_GETREGS:
+	case PTRACE_GET_THREAD_AREA:
+	case PTRACE_GETVFPREGS:
+	case PTRACE_GETHBPREGS:
 #endif
+		break;
+	default: {
+		struct task_integrity *tint = task->integrity;
+
+		if (task_integrity_user_read(tint) == INTEGRITY_NONE)
+			break;
+
+		task_integrity_delayed_reset(task);
+		five_audit_err(task, NULL, "ptrace", task_integrity_read(tint),
+				INTEGRITY_NONE, "reset-integrity", 0);
+		break;
+	}
+	}
+
+	return 0;
+}
+
+int five_process_vm_rw(struct task_struct *task, int write)
+{
+	if (write) {
+		struct task_integrity *tint = task->integrity;
+
+		if (task_integrity_user_read(tint) == INTEGRITY_NONE)
+			goto exit;
+
+		task_integrity_delayed_reset(task);
+		five_audit_err(task, NULL, "process_vm_rw",
+				task_integrity_read(tint), INTEGRITY_NONE,
+							"reset-integrity", 0);
+	}
+
+exit:
 	return 0;
 }
 

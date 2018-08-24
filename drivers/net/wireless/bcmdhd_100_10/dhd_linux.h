@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.h 701006 2017-05-23 08:25:04Z $
+ * $Id: dhd_linux.h 753315 2018-03-21 04:10:12Z $
  */
 
 /* wifi platform functions for power, interrupt and pre-alloc, either
@@ -60,6 +60,9 @@ struct wifi_platform_data {
 	int (*set_carddetect)(int val);
 	void *(*mem_prealloc)(int section, unsigned long size);
 	int (*get_mac_addr)(unsigned char *buf);
+#ifdef BCMSDIO
+	int (*get_wake_irq)(void);
+#endif // endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58)) || defined(CUSTOM_COUNTRY_CODE)
 	void *(*get_country_code)(char *ccode, u32 flags);
 #else /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 58)) || defined (CUSTOM_COUNTRY_CODE) */

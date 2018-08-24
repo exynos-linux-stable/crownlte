@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: linux_osl.h 737888 2017-12-23 13:20:41Z $
+ * $Id: linux_osl.h 749612 2018-03-01 08:51:26Z $
  */
 
 #ifndef _linux_osl_h_
@@ -572,5 +572,15 @@ extern osl_timer_t * osl_timer_init(osl_t *osh, const char *name, void (*fn)(voi
 extern void osl_timer_add(osl_t *osh, osl_timer_t *t, uint32 ms, bool periodic);
 extern void osl_timer_update(osl_t *osh, osl_timer_t *t, uint32 ms, bool periodic);
 extern bool osl_timer_del(osl_t *osh, osl_timer_t *t);
+
+typedef atomic_t osl_atomic_t;
+#define OSL_ATOMIC_SET(osh, v, x)	atomic_set(v, x)
+#define OSL_ATOMIC_INIT(osh, v)		atomic_set(v, 0)
+#define OSL_ATOMIC_INC(osh, v)		atomic_inc(v)
+#define OSL_ATOMIC_INC_RETURN(osh, v)	atomic_inc_return(v)
+#define OSL_ATOMIC_DEC(osh, v)		atomic_dec(v)
+#define OSL_ATOMIC_DEC_RETURN(osh, v)	atomic_dec_return(v)
+#define OSL_ATOMIC_READ(osh, v)		atomic_read(v)
+#define OSL_ATOMIC_ADD(osh, v, x)	atomic_add(v, x)
 
 #endif	/* _linux_osl_h_ */

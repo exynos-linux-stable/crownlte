@@ -109,7 +109,7 @@ static void dump_backtrace_entry(unsigned long where)
 	print_ip_sym(where);
 }
 
-#ifdef CONFIG_SEC_DEBUG_AUTO_SUMMARY
+#if defined(CONFIG_SEC_DEBUG_AUTO_SUMMARY) && !defined(CONFIG_SEC_DEBUG_BRANCH_VERIFIER)
 static void dump_backtrace_entry_auto_summary(unsigned long where)
 {
 	/*
@@ -261,6 +261,9 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 	struct stackframe frame;
 	unsigned long irq_stack_ptr;
 	int skip;
+#ifdef CONFIG_SEC_DEBUG_BRANCH_VERIFIER
+	struct branch_info binfo;
+#endif
 
 	pr_debug("%s(regs = %p tsk = %p)\n", __func__, regs, tsk);
 
@@ -291,6 +294,10 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 	frame.graph = tsk->curr_ret_stack;
 #endif
+#ifdef CONFIG_SEC_DEBUG_BRANCH_VERIFIER
+	frame.pc_from_irq = 0;
+	init_branch_info(&binfo);
+#endif
 
 	skip = !!regs;
 	pr_auto_once(2);
@@ -302,7 +309,12 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 
 		/* skip until specified stack frame */
 		if (!skip) {
+#ifdef CONFIG_SEC_DEBUG_BRANCH_VERIFIER
+			pre_check_backtrace_auto_summary(&binfo, where, frame.fp);
+			check_backtrace_auto_summary(&binfo, where, frame.fp, frame.pc_from_irq, NULL);
+#else
 			dump_backtrace_entry_auto_summary(where);
+#endif
 			exynos_ss_save_log(raw_smp_processor_id(), where);
 		} else if (frame.fp == regs->regs[29]) {
 			skip = 0;
@@ -313,7 +325,11 @@ static void dump_backtrace_auto_summary(struct pt_regs *regs, struct task_struct
 			 * at which an exception has taken place, use regs->pc
 			 * instead.
 			 */
+#ifdef CONFIG_SEC_DEBUG_BRANCH_VERIFIER
+			check_backtrace_auto_summary(&binfo, regs->pc, frame.fp, frame.pc_from_irq, regs);
+#else
 			dump_backtrace_entry_auto_summary(regs->pc);
+#endif
 			exynos_ss_save_log(raw_smp_processor_id(), regs->pc);
 		}
 		ret = unwind_frame(tsk, &frame);
@@ -690,6 +706,12 @@ static void ctr_read_handler(unsigned int esr, struct pt_regs *regs)
 	regs->pc += 4;
 }
 
+struct sys64_hook {
+	unsigned int esr_mask;
+	unsigned int esr_val;
+	void (*handler)(unsigned int esr, struct pt_regs *regs);
+};
+
 static void cntvct_read_handler(unsigned int esr, struct pt_regs *regs)
 {
 	int rt = (esr & ESR_ELx_SYS64_ISS_RT_MASK) >> ESR_ELx_SYS64_ISS_RT_SHIFT;
@@ -708,12 +730,6 @@ static void cntfrq_read_handler(unsigned int esr, struct pt_regs *regs)
 		regs->regs[rt] = read_sysreg(cntfrq_el0);
 	regs->pc += 4;
 }
-
-struct sys64_hook {
-	unsigned int esr_mask;
-	unsigned int esr_val;
-	void (*handler)(unsigned int esr, struct pt_regs *regs);
-};
 
 static struct sys64_hook sys64_hooks[] = {
 	{

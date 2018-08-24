@@ -116,24 +116,29 @@ static phys_addr_t __init early_pgtable_alloc(void)
 #ifdef CONFIG_UH_RKP
 spinlock_t ro_rkp_pages_lock = __SPIN_LOCK_UNLOCKED();
 char ro_pages_stat[RO_PAGES] = {0};
-unsigned int ro_alloc_last;
+unsigned int ro_alloc_avail = 0;
 
-static phys_addr_t __init rkp_ro_alloc_phys(void)
+static phys_addr_t rkp_ro_alloc_phys(void)
 {
 	unsigned long flags;
-	unsigned int i, j;
+	unsigned int i = 0;
 	phys_addr_t alloc_addr = 0;
+	bool found = false;
 
 	spin_lock_irqsave(&ro_rkp_pages_lock, flags);
-
-	for (i = 0, j = ro_alloc_last; i < (unsigned int)(RO_PAGES); i++) {
-		j =  (j+1) % (RO_PAGES);
-		if (!ro_pages_stat[j]) {
-			ro_pages_stat[j] = 1;
-			ro_alloc_last = j+1;
-			alloc_addr = (phys_addr_t)((u64)RKP_ROBUF_START +  (j << PAGE_SHIFT));
+	while(i < RO_PAGES) {
+		if(ro_pages_stat[ro_alloc_avail] == false){
+			found = true;
 			break;
 		}
+		ro_alloc_avail = (ro_alloc_avail + 1) % RO_PAGES;
+		i++;
+	}
+
+	if(found) {
+		alloc_addr = (phys_addr_t)((u64)RKP_ROBUF_START + (ro_alloc_avail << PAGE_SHIFT));
+		ro_pages_stat[ro_alloc_avail] = true;
+		ro_alloc_avail = (ro_alloc_avail + 1) % RO_PAGES;
 	}
 	spin_unlock_irqrestore(&ro_rkp_pages_lock, flags);
 
@@ -143,19 +148,24 @@ static phys_addr_t __init rkp_ro_alloc_phys(void)
 void *rkp_ro_alloc(void)
 {
 	unsigned long flags;
-	unsigned int i, j;
+	unsigned int i = 0;
 	void *alloc_addr = NULL;
+	bool found = false;
 
 	spin_lock_irqsave(&ro_rkp_pages_lock, flags);
-
-	for (i = 0, j = ro_alloc_last; i < (unsigned int)(RO_PAGES); i++) {
-		j =  (j+1) % (RO_PAGES);
-		if (!ro_pages_stat[j]) {
-			ro_pages_stat[j] = 1;
-			ro_alloc_last = j+1;
-			alloc_addr = (void *) ((u64)RKP_RBUF_VA +  (j << PAGE_SHIFT));
+	while(i < RO_PAGES) {
+		if(ro_pages_stat[ro_alloc_avail] == false){
+			found = true;
 			break;
 		}
+		ro_alloc_avail = (ro_alloc_avail + 1) % RO_PAGES;
+		i++;
+	}
+
+	if(found) {
+		alloc_addr = (void *)((u64)RKP_RBUF_VA + (ro_alloc_avail << PAGE_SHIFT));
+		ro_pages_stat[ro_alloc_avail] = true;
+		ro_alloc_avail = (ro_alloc_avail + 1) % RO_PAGES;
 	}
 	spin_unlock_irqrestore(&ro_rkp_pages_lock, flags);
 
@@ -170,7 +180,7 @@ void rkp_ro_free(void *free_addr)
 	i =  ((u64)free_addr - (u64)RKP_RBUF_VA) >> PAGE_SHIFT;
 	spin_lock_irqsave(&ro_rkp_pages_lock, flags);
 	ro_pages_stat[i] = 0;
-	ro_alloc_last = i;
+	ro_alloc_avail = i;
 	spin_unlock_irqrestore(&ro_rkp_pages_lock, flags);
 }
 
@@ -533,6 +543,14 @@ static void __init map_kernel_segment(pgd_t *pgd, void *va_start, void *va_end,
 	vma->size	= size;
 	vma->flags	= VM_MAP;
 	vma->caller	= __builtin_return_address(0);
+
+#ifdef CONFIG_UH_RKP
+	if(va_start == _text){
+		vma->addr	= (void *)((unsigned long)va_start & PMD_MASK);
+		vma->phys_addr	= (phys_addr_t)((unsigned long)pa_start & PMD_MASK);
+		vma->size	= size + (unsigned long)va_start - (unsigned long)vma->addr;
+	}
+#endif
 
 	vm_area_add_early(vma);
 }

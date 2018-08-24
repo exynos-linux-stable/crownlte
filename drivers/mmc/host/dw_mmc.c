@@ -1517,7 +1517,7 @@ static bool dw_mci_wait_data_busy(struct dw_mci *host, struct mmc_request *mrq)
 	bool ret = false;
 
 	do {
-		if (!readl_poll_timeout_atomic(host->regs + SDMMC_STATUS, status,
+		if (!readl_poll_timeout(host->regs + SDMMC_STATUS, status,
 				!(status & SDMMC_STATUS_BUSY),
 				10, 100 * USEC_PER_MSEC)) {
 			ret = true;
@@ -1677,7 +1677,8 @@ static void __dw_mci_start_request(struct dw_mci *host,
 	mrq = slot->mrq;
 
 	if (mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK ||
-			mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200)
+			mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200 ||
+			mrq->cmd->opcode == SD_APP_SEND_SCR)
 		mod_timer(&host->timer, jiffies + msecs_to_jiffies(500));
 	else if (host->pdata->sw_timeout)
 		mod_timer(&host->timer,
@@ -3625,8 +3626,7 @@ out:
 
 bool dw_mci_fifo_reset(struct device *dev, struct dw_mci *host)
 {
-	unsigned long timeout = jiffies + msecs_to_jiffies(1000);
-	unsigned int ctrl;
+	unsigned int ctrl, loop_count = 3;
 	bool result;
 
 	do {
@@ -3648,7 +3648,7 @@ bool dw_mci_fifo_reset(struct device *dev, struct dw_mci *host)
 				return true;
 			}
 		}
-	} while (time_before(jiffies, timeout));
+	} while (loop_count--);
 
 	dev_err(dev, "%s: Timeout while resetting host controller after err\n",
 		__func__);

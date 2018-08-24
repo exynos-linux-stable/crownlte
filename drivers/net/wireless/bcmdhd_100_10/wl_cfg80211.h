@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.h 765757 2018-06-05 07:48:03Z $
+ * $Id: wl_cfg80211.h 764043 2018-05-23 11:21:10Z $
  */
 
 /**
@@ -149,6 +149,11 @@ do {	\
 		DHD_LOG_DUMP_WRITE_EX args;	\
 	}	\
 } while (0)
+#define	WL_MEM(args)	\
+do {	\
+	DHD_LOG_DUMP_WRITE("[%s] %s: ", dhd_log_dump_get_timestamp(), __func__);	\
+	DHD_LOG_DUMP_WRITE args;	\
+} while (0)
 #else
 #define	WL_ERR(args)									\
 do {										\
@@ -161,6 +166,7 @@ do {										\
 #define WL_ERR_MEM(args) WL_ERR(args)
 #define WL_INFORM_MEM(args) WL_INFORM(args)
 #define WL_ERR_EX(args) WL_ERR(args)
+#define WL_MEM(args) WL_DBG(args)
 #endif /* DHD_LOG_DUMP */
 #else /* defined(DHD_DEBUG) */
 #define	WL_ERR(args)									\
@@ -174,6 +180,7 @@ do {										\
 #define WL_ERR_MEM(args) WL_ERR(args)
 #define WL_INFORM_MEM(args) WL_INFORM(args)
 #define WL_ERR_EX(args) WL_ERR(args)
+#define WL_MEM(args) WL_DBG(args)
 #endif /* defined(DHD_DEBUG) */
 
 #define WL_PRINT_RATE_LIMIT_PERIOD 4000000000u /* 4s in units of ns */
@@ -612,13 +619,30 @@ struct wl_profile {
 	bool active;
 };
 
-typedef struct wl_wps_ie {
+struct wl_wps_ie {
 	uint8	id;		/* IE ID: 0xDD */
 	uint8	len;		/* IE length */
 	uint8	OUI[3];		/* WiFi WPS specific OUI */
 	uint8	oui_type;	/*  Vendor specific OUI Type */
 	uint8	attrib[1];	/* variable length attributes */
-} wl_wps_ie_t;
+} __attribute__ ((packed));
+typedef struct wl_wps_ie wl_wps_ie_t;
+
+struct wl_eap_msg {
+	uint16 attrib;
+	uint16 len;
+	uint8 type;
+} __attribute__ ((packed));
+typedef struct wl_eap_msg wl_eap_msg_t;
+
+struct wl_eap_exp {
+	uint8 OUI[3];
+	uint32 oui_type;
+	uint8 opcode;
+	u8 flags;
+	u8 data[1];
+} __attribute__ ((packed));
+typedef struct wl_eap_exp wl_eap_exp_t;
 
 struct net_info {
 	struct net_device *ndev;
@@ -841,6 +865,7 @@ typedef struct wl_ndi_data
 {
 	u8 ifname[IFNAMSIZ];
 	u8 in_use;
+	u8 created;
 } wl_ndi_data_t;
 typedef struct wl_nancfg
 {
@@ -848,11 +873,69 @@ typedef struct wl_nancfg
 	struct mutex nan_sync;
 	uint8 svc_inst_id_mask[NAN_SVC_INST_SIZE];
 	uint8 inst_id_start;
-	/* completion variable for enable/disable */
-	struct completion nan_enab_disab;
-	bool disable_pending;
+	/* wait queue and condition variable for nan event */
+	bool nan_event_recvd;
+	wait_queue_head_t nan_event_wait;
+	nan_stop_reason_code_t disable_reason;
+	bool mac_rand;
 } wl_nancfg_t;
 #endif /* WL_NAN */
+
+#ifdef WL_WPS_SYNC
+#define EAP_PACKET              0
+#define EAP_EXPANDED_TYPE       254
+#define EAP_EXP_OPCODE_OFFSET   7
+#define EAP_EXP_FRAGMENT_LEN_OFFSET	2
+#define EAP_EXP_FLAGS_FRAGMENTED_DATA	2
+#define EAP_EXP_FLAGS_MORE_DATA	1
+#define EAPOL_EAP_HDR_LEN       5
+#define EAP_EXP_HDR_MIN_LENGTH	(EAPOL_EAP_HDR_LEN + EAP_EXP_OPCODE_OFFSET)
+#define EAP_ATTRIB_MSGTYPE  0x1022
+#define EAP_WSC_UPNP        0
+#define EAP_WSC_START       1
+#define EAP_WSC_ACK         2
+#define EAP_WSC_NACK        3
+#define EAP_WSC_MSG         4
+#define EAP_WSC_DONE        5
+#define EAP_WSC_MSG_M8      12
+#define EAP_CODE_FAILURE    4
+#define WL_WPS_REAUTH_TIMEOUT	10000
+
+struct wl_eap_header {
+	unsigned char code; /* EAP code */
+	unsigned char id;   /* Current request ID */
+	unsigned short length;  /* Length including header */
+	unsigned char type; /* EAP type (optional) */
+	unsigned char data[1];  /* Type data (optional) */
+} __attribute__ ((packed));
+typedef struct wl_eap_header wl_eap_header_t;
+
+typedef enum wl_wps_state {
+	WPS_STATE_IDLE = 0,
+	WPS_STATE_STARTED,
+	WPS_STATE_M8_RECVD,
+	WPS_STATE_EAP_FAIL,
+	WPS_STATE_REAUTH_WAIT,
+	WPS_STATE_LINKUP,
+	WPS_STATE_LINKDOWN,
+	WPS_STATE_DISCONNECT,
+	WPS_STATE_DISCONNECT_CLIENT,
+	WPS_STATE_CONNECT_FAIL,
+	WPS_STATE_AUTHORIZE,
+	WPS_STATE_DONE,
+	WPS_STATE_INVALID
+} wl_wps_state_t;
+
+#define WPS_MAX_SESSIONS	2
+typedef struct wl_wps_session {
+	bool in_use;
+	struct timer_list timer;
+	struct net_device *ndev;
+	wl_wps_state_t state;
+	u16 mode;
+	u8 peer_mac[ETHER_ADDR_LEN];
+} wl_wps_session_t;
+#endif /* WL_WPS_SYNC */
 
 /* private data of cfg80211 interface */
 struct bcm_cfg80211 {
@@ -1079,6 +1162,10 @@ struct bcm_cfg80211 {
 	bool rssi_sum_report;
 	int rssi;	/* previous RSSI (backup) of get_station */
 	uint64 scan_enq_time;
+#ifdef WL_WPS_SYNC
+	wl_wps_session_t wps_session[WPS_MAX_SESSIONS];
+	spinlock_t wps_sync;	/* to protect wps states (and others if needed) */
+#endif /* WL_WPS_SYNC */
 #ifdef WL_BAM
 	wl_bad_ap_mngr_t bad_ap_mngr;
 #endif  /* WL_BAM */
@@ -1991,6 +2078,9 @@ extern s32 wl_cfg80211_check_for_nan_support(struct bcm_cfg80211 *cfg);
 extern int wl_cfg80211_deinit_p2p_discovery(struct bcm_cfg80211 * cfg);
 extern int wl_cfg80211_set_frameburst(struct bcm_cfg80211 *cfg, bool enable);
 extern int wl_cfg80211_determine_p2p_rsdb_mode(struct bcm_cfg80211 *cfg);
+#ifdef WL_WPS_SYNC
+void wl_handle_wps_states(struct net_device *ndev, u8 *dump_data, u16 len, bool direction);
+#endif /* WL_WPS_SYNC */
 
 /* Function to flush the FW log buffer content */
 #ifdef DHD_LOG_DUMP

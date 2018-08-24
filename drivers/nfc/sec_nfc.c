@@ -43,6 +43,9 @@
 #include <linux/poll.h>
 #include <linux/sched.h>
 #include <linux/i2c.h>
+#ifdef CONFIG_ESE_SECURE
+#include <linux/smc.h>
+#endif
 
 #include "sec_nfc.h"
 #include "./nfc_logger/nfc_logger.h"
@@ -1025,6 +1028,13 @@ static int sec_nfc_probe(struct i2c_client *client,
 
 	nfc_logger_init();
 
+#ifdef CONFIG_ESE_SECURE
+	ret = exynos_smc(0x83000032, 0 , 0, 0);
+	if (ret == EBUSY) { 
+		NFC_LOG_ERR("eSE spi secure fail!\n");
+		return -EBUSY;
+	}
+#endif
 	ret = __sec_nfc_probe(&client->dev);
 	if (ret)
 		return ret;

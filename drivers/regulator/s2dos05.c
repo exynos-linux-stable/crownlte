@@ -389,16 +389,16 @@ static irqreturn_t s2dos05_irq_thread(int irq, void *irq_data)
 	const char *irq_bit[] = { "OCD", "UVLO", "SCP", "SSD", "TSD", "PWRMT" };
 	char irq_name[32];
 	ssize_t ret = 0;
-	int i;
+	unsigned long bit, lval;
 #endif /* CONFIG_SEC_PM_DEBUG */
 
 
 	s2dos05_read_reg(s2dos05->iodev->i2c, S2DOS05_REG_IRQ, &val);
 	pr_info("%s:irq(%d) S2DOS05_REG_IRQ : 0x%x\n", __func__, irq, val);
 #ifdef CONFIG_SEC_PM_DEBUG
-	for (i = 0; i < ARRAY_SIZE(irq_bit); i++)
-		if (val & (1 << i))
-			ret += sprintf(irq_name + ret, " %s", irq_bit[i]);
+	lval = val;
+	for_each_set_bit(bit, &lval, ARRAY_SIZE(irq_bit))
+		ret += sprintf(irq_name + ret, " %s", irq_bit[bit]);
 
 	pr_info("%s: IRQ:%s\n", __func__, irq_name);
 #endif /* CONFIG_SEC_PM_DEBUG */
@@ -422,10 +422,10 @@ static int s2dos05_pmic_dt_parse_pdata(struct device *dev,
 		return -ENODEV;
 	}
 
-	pdata->dp_irq = of_get_named_gpio(pmic_np, "s2dos05,s2dos05_int", 0);
-	if (pdata->dp_irq < 0)
+	pdata->dp_pmic_irq = of_get_named_gpio(pmic_np, "s2dos05,s2dos05_int", 0);
+	if (pdata->dp_pmic_irq < 0)
 		pr_err("%s error reading s2dos05_irq = %d\n",
-			__func__, pdata->dp_irq);
+			__func__, pdata->dp_pmic_irq);
 
 	pdata->wakeup = of_property_read_bool(pmic_np, "s2dos05,wakeup");
 
@@ -589,11 +589,11 @@ static int s2dos05_pmic_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
-	if (pdata->dp_irq > 0) {
-		iodev->dp_irq = gpio_to_irq(pdata->dp_irq);
-		pr_info("%s : dp_irq = %d\n", __func__, iodev->dp_irq);
-		if (iodev->dp_irq > 0) {
-			ret = request_threaded_irq(iodev->dp_irq,
+	if (pdata->dp_pmic_irq > 0) {
+		iodev->dp_pmic_irq = gpio_to_irq(pdata->dp_pmic_irq);
+		pr_info("%s : dp_pmic_irq = %d\n", __func__, iodev->dp_pmic_irq);
+		if (iodev->dp_pmic_irq > 0) {
+			ret = request_threaded_irq(iodev->dp_pmic_irq,
 					NULL, s2dos05_irq_thread,
 					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 					"dp-pmic-irq", s2dos05);
@@ -603,14 +603,14 @@ static int s2dos05_pmic_probe(struct i2c_client *i2c,
 				goto err_rdata;
 			}
 
-			ret = enable_irq_wake(iodev->dp_irq);
+			ret = enable_irq_wake(iodev->dp_pmic_irq);
 			if (ret < 0)
 				dev_err(&i2c->dev,
 						"%s: Failed to Enable Wakeup Source(%d)\n",
 						__func__, ret);
 		} else {
 			dev_err(&i2c->dev, "%s: Failed gpio_to_irq(%d)\n",
-					__func__, iodev->dp_irq);
+					__func__, iodev->dp_pmic_irq);
 			goto err_rdata;
 		}
 	}
