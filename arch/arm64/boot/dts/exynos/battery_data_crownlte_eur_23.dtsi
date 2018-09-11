@@ -25,9 +25,9 @@
 		battery,expired_time = <10800>;
 		battery,recharging_expired_time = <5400>;
 	};
-        
+
 	max77705-fuelgauge {
-		fuelgauge,v_empty = <0xA7E2>; /* Empty: 3350mV, Recover: 3480mV */
+		fuelgauge,v_empty = <0xA05F>; /* Empty: 3350mV, Recover: 3480mV */
 		fuelgauge,capacity = <0x0EA9>;
 	};
 
