@@ -9,7 +9,7 @@
  * published by the Free Software Foundation.
  */
 
-#include "battery_data_starlte_common.dtsi"
+#include "battery_data_crownlte_common.dtsi"
 
 / {
 };

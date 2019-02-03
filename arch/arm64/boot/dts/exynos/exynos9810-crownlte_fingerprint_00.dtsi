@@ -16,12 +16,6 @@
 		btp_irq: btp-irq {
 			samsung,pins = "gpa1-3";
 			samsung,pin-function = <0>;
-			samsung,pin-pud = <0>;
-			samsung,pin-drv = <3>;
-		};
-		btp_irq_sleep: btp-irq-sleep {
-			samsung,pins = "gpa1-3";
-			samsung,pin-function = <0>;
 			samsung,pin-pud = <1>;
 			samsung,pin-drv = <3>;
 		};
@@ -39,11 +33,18 @@
 	pinctrl@10430000 {
 		/* SPI_FP */
 		spi1_bus_inactive: spi1-bus-inactive {
-			samsung,pins = "gpp0-3", "gpp0-1", "gpp0-0";
+			samsung,pins = "gpp0-1", "gpp0-0";
 			samsung,pin-function = <1>;
 			samsung,pin-pud = <0>;
 			samsung,pin-drv = <2>;
 			samsung,pin-val = <0>;
+		};
+		spi1_cs_inactive: spi1-cs_inactive {
+			samsung,pins = "gpp0-3";
+			samsung,pin-function = <1>;
+			samsung,pin-pud = <0>;
+			samsung,pin-drv = <2>;
+			samsung,pin-val = <1>;
 		};
 		spi1_miso_inactive: spi1-miso-inactive {
 			samsung,pins = "gpp0-2";
@@ -51,30 +52,30 @@
 			samsung,pin-pud = <1>;
 			samsung,pin-drv = <2>;
 		};
-		spi1_clk: spi1-clk {
-			samsung,pins = "gpp0-0";
-			samsung,pin-function = <2>;
-			samsung,pin-pud = <1>;
-			samsung,pin-drv = <2>;
-		};
-		spi1_cs: spi1-cs {
-			samsung,pins = "gpp0-3";
+		spi1_bus_active: spi1-bus-active {
+			samsung,pins = "gpp0-0", "gpp0-1", "gpp0-2";
 			samsung,pin-function = <2>;
 			samsung,pin-pud = <3>;
 			samsung,pin-drv = <2>;
 		};
-		spi1_miso: spi1-miso {
-			samsung,pins = "gpp0-2";
+		spi1_cs_active: spi1-cs-active {
+			samsung,pins = "gpp0-3";
 			samsung,pin-function = <2>;
-			samsung,pin-pud = <1>;
+			samsung,pin-pud = <3>;
 			samsung,pin-drv = <2>;
+			samsung,pin-val = <1>;
 		};
-		spi1_mosi: spi1-mosi {
-			samsung,pins = "gpp0-1";
-			samsung,pin-function = <2>;
-			samsung,pin-pud = <1>;
-			samsung,pin-drv = <2>;
-		};
+	};
+
+	qcom,qbt1000 {
+		compatible = "qcom,qbt1000";
+		qcom,ipc-gpio = <&gpa1 3 0x00>;
+		qcom,ldo-gpio = <&gpm43 0 0x00>;
+
+		pinctrl-names = "default", "idle", "sleep";
+		pinctrl-0 = <&btp_irq &btp_ldo>;
+		pinctrl-1 = <&spi1_bus_active &spi1_cs_active>;
+		pinctrl-2 = <&spi1_bus_inactive &spi1_cs_inactive &spi1_miso_inactive>;
 	};
 
 	/* SPI USI_PERIC0_USI00_SPI */
@@ -86,32 +87,22 @@
 		clocks = <&clock GATE_USI00>, <&clock USI00>;
 		clock-names = "spi", "spi_busclk0";
 
-		/delete-property/ pinctrl-names;
-		/delete-property/ pinctrl-0;
 		dma-mode;
 		dmas = <&pdma0 1 &pdma0 0>;
+		/delete-property/ swap-mode;
 
-		etspi-spi@0 {
-			compatible = "etspi,et5xx";
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+
+		qbtspi@0 {
+			compatible = "qbtspi";
 			reg = <0>;
-			spi-max-frequency = <13000000>;
-			pinctrl-names = "default", "pins_poweron", "pins_poweroff"
-							, "pins_poweron_tz", "pins_poweroff_tz";
-			pinctrl-0 = <&btp_irq_sleep &btp_ldo>;
-			pinctrl-1 = <&btp_irq &spi1_clk &spi1_cs &spi1_miso &spi1_mosi>;
-			pinctrl-2 = <&btp_irq_sleep &spi1_bus_inactive &spi1_miso_inactive>;
-			pinctrl-3 = <&btp_irq>;
-			pinctrl-4 = <&btp_irq_sleep>;
+			spi-max-frequency = <25000000>;
 
 			gpio-controller;
 			#gpio-cells = <2>;
-
-			etspi-sleepPin = <&expander_gpios 6 0>;
-			etspi-drdyPin = <&gpa1 3 0x00>;
-			etspi-ldoPin = <&gpm43 0 0x00>;
-			etspi-chipid = "ET510";
-			etspi-orient = <0>;
-
+			
 			controller-data {
 				cs-gpio = <&gpp0 3 0>;
 				samsung,spi-feedback-delay = <0>;

@@ -9,7 +9,13 @@
  * published by the Free Software Foundation.
  */
 
-#include "battery_data_star2lte_common.dtsi"
+#include "battery_data_crownlte_common.dtsi"
 
 / {
+	max77705-fuelgauge {
+		fuelgauge,v_empty = <0xA7E2>; /* Empty: 3260mV, Recover: 3480mV */
+		fuelgauge,qrtable20 = <0x0A0C>;
+		fuelgauge,qrtable30 = <0x0889>;
+		fuelgauge,capacity = <0x0B1D>;
+	};
 };
