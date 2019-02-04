@@ -16,19 +16,19 @@
 
 		normal_powermode_current_uu = <10>;
 		low_powermode_current_uu = <10>;
-		br_ratio_r_uu = <700>;
+		br_ratio_r_uu = <550>;
 		br_ratio_g_uu = <60>;
-		br_ratio_b_uu = <120>;
-		br_ratio_r_low_uu = <100>;
+		br_ratio_b_uu = <90>;
+		br_ratio_r_low_uu = <70>;
 		br_ratio_g_low_uu = <10>;
 		br_ratio_b_low_uu = <10>;
 
 		normal_powermode_current_bk = <10>;
 		low_powermode_current_bk = <10>;
-		br_ratio_r_bk = <700>;
+		br_ratio_r_bk = <550>;
 		br_ratio_g_bk = <60>;
-		br_ratio_b_bk = <120>;
-		br_ratio_r_low_bk = <100>;
+		br_ratio_b_bk = <90>;
+		br_ratio_r_low_bk = <70>;
 		br_ratio_g_low_bk = <10>;
 		br_ratio_b_low_bk = <10>;
 
