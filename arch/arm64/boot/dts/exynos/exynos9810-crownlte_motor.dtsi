@@ -16,12 +16,12 @@
 		/* for multi-frequency */
 		haptic,multi_frequency = <7>;
 		/* frequency     alert low   mid   high  0     press release */
-		haptic,duty   = <36621 48828 39062 29296 32551 37108 37108>;
+		haptic,duty   = <40527 54036 43228 32421 36023 37108 37108>;
 		haptic,period = <48828 65104 52083 39062 43402 39062 39062>;
 		haptic,reg2 = <0x82>;
 		haptic,pwm_id = <1>;
 		haptic,regulator_name = "VDD_MOTOR_3P3";
-		haptic,normal_ratio = <75>;
+		haptic,normal_ratio = <83>;
 		haptic,overdrive_ratio = <95>;
 	};
 };
